@@ -1,0 +1,28 @@
+{
+  "app": {
+    "entryPagePath": "pages/home/index",
+    "pages": [
+      "pages/home/index",
+      "pages/detail/index"
+    ],
+    "window": {
+      "navigationBarBackgroundColor": "#ffffff",
+      "navigationBarTextStyle": "black",
+      "navigationBarTitleText": "title",
+      "backgroundColor": "#eeeeee"
+    }
+  },
+  "modules": {
+    "pages/home/index": {
+      "navigationBarBackgroundColor": "#ddd",
+      "navigationBarTextStyle": "black",
+      "navigationBarTitleText": "首页123",
+      "backgroundColor": "#fff",
+      "usingComponents": {}
+    },
+    "pages/detail/index": {
+      "backgroundColor": "#fff",
+      "usingComponents": {}
+    }
+  }
+}

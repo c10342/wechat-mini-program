@@ -1,0 +1,260 @@
+@import '@native/scss/funcs.scss';
+
+.weixin-app__page-view {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	right: 0;
+	background-color: #ededed;
+}
+
+.weixin-app-navigation {
+	padding-top: logic(88px);
+	height: logic(88px);
+	box-sizing: content-box;
+	display: flex;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 10;
+	background-color: #ededed;
+
+	.weixin-app-navigation__content {
+		width: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		position: relative;
+	}
+
+	.weixin-app-navigation__left-btn {
+		width: logic(20px);
+		height: logic(88px);
+		position: absolute;
+		left: logic(34px);
+		top: 0;
+		background: url('@native/images/mini-arrow-left.png') no-repeat left center;
+		background-size: logic(20px) logic(35px);
+		cursor: pointer;
+	}
+
+	.weixin-app-navigation__title {
+		text-align: center;
+		font-size: logic(34px);
+		color: #333;
+	}
+
+	.weixin-app-navigation__right-btn {
+		width: logic(45px);
+		height: logic(88px);
+		position: absolute;
+		right: logic(33px);
+		cursor: pointer;
+		top: 0;
+		background: url('@native/images/more.png') no-repeat center center;
+		background-size: logic(35px) auto;
+	}
+}
+
+.weixin-app-content {
+	padding-top: logic(176px);
+	box-sizing: border-box;
+	height: 100%;
+	overflow-y: scroll;
+}
+
+.weixin-app-content__group {
+	margin-bottom: logic(16px);
+	background-color: #fff;
+	border-bottom: 1px solid #e6e6e6;
+	border-top: 1px solid #e6e6e6;
+
+	.weixin-app-content__item {
+		padding-left: logic(112px);
+		position: relative;
+		cursor: pointer;
+
+		&:last-child .weixin-app-content__name {
+			border: none;
+			position: relative;
+		}
+
+		.weixin-app-content__find-notify {
+			width: logic(64px);
+			height: logic(64px);
+			position: absolute;
+			right: logic(76px);
+			top: 50%;
+			transform: translateY(-50%);
+			border-radius: logic(10px);
+			background: url('@native/images/pony.jpg') no-repeat;
+			background-size: 100% 100%;
+
+			.weixin-app-content__find-notify-tips {
+				position: absolute;
+				width: logic(17px);
+				height: logic(17px);
+				background-color: #ff505a;
+				right: logic(-8px);
+				top: logic(-8px);
+				border-radius: 50%;
+			}
+		}
+
+		.weixin-app-content__arrow {
+			width: logic(14px);
+			height: logic(25px);
+			background: url('@native/images/icon-arrow.png') no-repeat;
+			background-size: 100% 100%;
+			position: absolute;
+			right: logic(32px);
+			top: 50%;
+			transform: translateY(-50%);
+		}
+	}
+
+	.weixin-app-content__left-icon {
+		width: logic(48px);
+		height: logic(48px);
+		position: absolute;
+		left: logic(32px);
+		top: 50%;
+		transform: translateY(-50%);
+
+		&.weixin-app-content__icon-find {
+			background: url('@native/images/icon-find.jpg') no-repeat;
+			background-size: 100% 100%;
+		}
+
+		&.weixin-app-content__icon-video {
+			background: url('@native/images/icon-video.jpg') no-repeat;
+			background-size: 100% 100%;
+		}
+
+		&.weixin-app-content__icon-qrcode {
+			background: url('@native/images/icon-qrcode.jpg') no-repeat;
+			background-size: 100% 100%;
+		}
+
+		&.weixin-app-content__icon-shake {
+			background: url('@native/images/icon-shake.jpg') no-repeat;
+			background-size: 100% 100%;
+		}
+
+		&.weixin-app-content__icon-look {
+			background: url('@native/images/icon-look.jpg') no-repeat;
+			background-size: 100% 100%;
+		}
+
+		&.weixin-app-content__icon-search {
+			background: url('@native/images/icon-search.jpg') no-repeat;
+			background-size: 100% 100%;
+		}
+
+		&.weixin-app-content__icon-mini {
+			background: url('@native/images/icon-mini.jpg') no-repeat;
+			background-size: 100% 100%;
+		}
+
+		&.weixin-app-content__icon-nearby {
+			background: url('@native/images/icon-nearby.jpg') no-repeat;
+			background-size: 100% 100%;
+		}
+
+		&.weixin-app-content__icon-order {
+			background: url('@native/images/icon-order.jpg') no-repeat;
+			background-size: 100% 100%;
+		}
+
+		&.weixin-app-content__icon-my-mini {
+			background: url('@native/images/icon-my-mini.jpg') no-repeat;
+			background-size: 100% 100%;
+		}
+	}
+
+	.weixin-app-content__name {
+		padding-top: logic(40px);
+		padding-bottom: logic(40px);
+		border-bottom: 1px solid #e6e6e6;
+		padding-right: logic(76px);
+		position: relative;
+	}
+
+	.weixin-app-content__name-txt {
+		font-size: logic(34px);
+		color: #333;
+	}
+}
+
+.weixin-app-footer-bar {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	padding-bottom: logic(68px);
+	border-top: 1px solid #d5d5d5;
+	box-sizing: border-box;
+	background-color: #f6f6f6;
+	z-index: 10;
+	
+	.weixin-app-footer-btns {
+		display: flex;
+		flex-direction: row;
+		height: logic(113px);
+	}
+
+	.weixin-app-footer-btn {
+		position: relative;
+		flex: 1;
+		list-style: none;
+		padding-top: logic(80px);
+	}
+
+	.weixin-app-footer-btn__name {
+		text-align: center;
+		font-size: logic(20px);
+		color: #333;
+	}
+
+	.weixin-app-footer-btn__icon {
+		width: logic(56px);
+		height: logic(56px);
+		position: absolute;
+		top: logic(18px);
+		left: 50%;
+		transform: translateX(-50%);
+	}
+
+	.weixin-app-footer-btn__find-update-notify {
+		position: absolute;
+		right: 0;
+		width: logic(16px);
+		height: logic(16px);
+		top: 0;
+		background-color: #ff505a;
+		border-radius: 50%;
+		z-index: 2;
+	}
+
+	.weixin-app-footer-btn__icon-wx {
+		background: url('@native/images/tab-wx.jpg') no-repeat;
+		background-size: 100% 100%;
+	}
+
+	.weixin-app-footer-btn__icon-contact {
+		background: url('@native/images/tab-contact.jpg') no-repeat;
+		background-size: 100% 100%;
+	}
+
+	.weixin-app-footer-btn__icon-find {
+		background: url('@native/images/tab-find.jpg') no-repeat;
+		background-size: 100% 100%;
+	}
+
+	.weixin-app-footer-btn__icon-profile {
+		background: url('@native/images/tab-profile.jpg') no-repeat;
+		background-size: 100% 100%;
+	}
+}

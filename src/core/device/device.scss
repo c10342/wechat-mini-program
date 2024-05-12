@@ -1,0 +1,89 @@
+@import '@native/scss/funcs.scss';
+
+#root {
+	padding-top: 20px;
+	padding-bottom: 20px;
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	overflow-y: scroll;
+	background: #1e1e1e;
+}
+
+#iphone {
+	height: toMacLogicSize(2596px);
+	width: toMacLogicSize(1300px);
+	position: relative;
+	margin: 0px auto 0;
+
+	.iphone__device {
+		position: absolute;
+		width: 100%;
+		height: 100%;
+		left: 0;
+		top: 0;
+		z-index: 100;
+		background: url('../../images/iphone1.png') no-repeat;
+		background-size: 100% 100%;
+		pointer-events: none;
+	}
+
+	.iphone__screen {
+		position: absolute;
+		z-index: 1;
+		left: toMacLogicSize(87px);
+		top: toMacLogicSize(80px);
+		width: toMacLogicSize(1125px);
+		height: toMacLogicSize(2436px);
+		background-color: #fff;
+		overflow: hidden;
+	}
+
+	.iphone__status-bar {
+		height: toMacLogicSize(132px);
+		position: absolute;
+		left: 0;
+		right: 0;
+		z-index: 100;
+		pointer-events: none;
+
+		&.iphone__status-bar--white {
+			background: url('../../images/status-bar-white.png') no-repeat;
+			background-size: 100% 100%;
+		}
+
+		&.iphone__status-bar--black {
+			background: url('../../images/status-bar.png') no-repeat;
+			background-size: 100% 100%;
+		}
+	}
+
+	.iphone__home-touch-bar {
+		position: absolute;
+		z-index: 100;
+		height: toMacLogicSize(102px);
+		left: 0;
+		right: 0;
+		bottom: 0;
+
+		&.iphone__home-touch-bar--white {
+			background: url('../../images/home-touh-bar-white.png') no-repeat;
+			background-size: 100% 100%;
+		}
+
+		&.iphone__home-touch-bar--black {
+			background: url('../../images/home-touh-bar.png') no-repeat;
+			background-size: 100% 100%;
+		}
+	}
+
+	.iphone__apps {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		right: 0;
+	}
+}

@@ -1,0 +1,8 @@
+// 562.5 / 750 562.5是屏幕逻辑尺寸 750是设计尺寸 $size是750基准设计尺寸
+@function logic($size) { 
+  @return $size * 0.75; 
+}
+
+@function toMacLogicSize($size) { 
+  @return $size / 2; 
+}
