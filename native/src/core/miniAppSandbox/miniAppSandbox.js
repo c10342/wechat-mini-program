@@ -4,6 +4,7 @@ import { uuid } from "@native/utils/util";
 import { AppManager } from "@native/core/appManager/appManager";
 import { readFile, mergePageConfig } from "./util";
 import { Bridge } from "../bridge";
+import { JSCore } from "../jscore";
 
 // 小程序实例
 export class MiniAppSandbox {
@@ -18,6 +19,9 @@ export class MiniAppSandbox {
     this.appConfig = null;
     // 通信桥
     this.bridgeList = [];
+    // 逻辑线程
+    this.jscore = new JSCore();
+    this.jscore.parent = this;
   }
 
   viewDidLoad() {
@@ -29,6 +33,8 @@ export class MiniAppSandbox {
 
   // 初始化小程序
   async initApp() {
+    // 初始化逻辑线程
+    await this.jscore.init();
     // 1、读取小程序资源
     // 2、读取配置
     const configPath = `${this.appInfo.appId}/config.json`;
@@ -56,7 +62,7 @@ export class MiniAppSandbox {
   // 创建通信桥
   createBridge() {
     const bridge = new Bridge();
-    bridge.parent = this
+    bridge.parent = this;
     return bridge;
   }
   // 初始化容器

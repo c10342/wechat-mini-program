@@ -1,0 +1,20 @@
+{
+  presets: [
+    [
+      '@babel/preset-env',
+      {
+        targets: {
+          browsers: ['cover 99.5%']
+        }
+      }
+    ]
+  ],
+  plugins: [
+    [
+      '@babel/plugin-transform-runtime',
+      {
+        corejs: { version: 3 }
+      }
+    ]
+  ]
+}
