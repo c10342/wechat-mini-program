@@ -1,9 +1,13 @@
+import mitt from "mitt";
+
+
 export class JSCore {
   constructor() {
     // 指向小程序容器
     this.parent = null;
     // Worker
     this.worker = null;
+    this.event = mitt()
   }
 
   async init() {
@@ -15,5 +19,16 @@ export class JSCore {
     });
     const urlObj = window.URL.createObjectURL(jsBlob);
     this.worker = new Worker(urlObj);
+    this.worker.addEventListener("message", (e) => {
+      this.event.emit("message", e.data);
+    });
+  }
+// 监听消息
+  addEventListener(type, handler) {
+    this.event.on(type, handler);
+  }
+// 发送消息
+  postMessage(msg) {
+    this.worker.postMessage(msg);
   }
 }

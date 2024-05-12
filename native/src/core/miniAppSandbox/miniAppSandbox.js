@@ -22,6 +22,12 @@ export class MiniAppSandbox {
     // 逻辑线程
     this.jscore = new JSCore();
     this.jscore.parent = this;
+    this.jscore.addEventListener('message',this.jscoreMessageHandler.bind(this))
+  }
+
+  jscoreMessageHandler(msg){
+
+    console.log('MiniAppSandbox',msg);
   }
 
   viewDidLoad() {
@@ -47,8 +53,16 @@ export class MiniAppSandbox {
     // 根据页面信息配置状态栏颜色
     this.updateTargetPageColorStyle(entryPagePath);
     // 4、创建通信桥 bridge
-    const entryPageBridge = this.createBridge();
+    const entryPageBridge = this.createBridge({
+      jscore:this.jscore
+    });
     this.bridgeList.push(entryPageBridge);
+    this.jscore.postMessage({
+      type: "test",
+      body: {
+        a: "我是来自MiniAppSandbox的消息",
+      },
+    });
   }
 
   // 生命周期
@@ -60,8 +74,10 @@ export class MiniAppSandbox {
     console.log("MiniAppSandbox：onPresentOut");
   }
   // 创建通信桥
-  createBridge() {
-    const bridge = new Bridge();
+  createBridge(opts) {
+    const bridge = new Bridge({
+      jscore:opts.jscore
+    });
     bridge.parent = this;
     return bridge;
   }
