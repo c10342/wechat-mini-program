@@ -3,6 +3,7 @@ import tpl from "./tpl.html";
 import { uuid } from "@native/utils/util";
 import { AppManager } from "@native/core/appManager/appManager";
 import { readFile, mergePageConfig } from "./util";
+import { Bridge } from "../bridge";
 
 // 小程序实例
 export class MiniAppSandbox {
@@ -15,6 +16,8 @@ export class MiniAppSandbox {
     this.el.classList.add("wx-native-view");
     // 小程序配置信息
     this.appConfig = null;
+    // 通信桥
+    this.bridgeList = [];
   }
 
   viewDidLoad() {
@@ -32,11 +35,14 @@ export class MiniAppSandbox {
     const configContent = await readFile(configPath);
     this.appConfig = JSON.parse(configContent);
 
-    // 3. 设置状态栏的颜色模式
+    // 3、 设置状态栏的颜色模式
     const entryPagePath =
       this.appInfo.pagePath || this.appConfig.app.entryPagePath;
     // 根据页面信息配置状态栏颜色
     this.updateTargetPageColorStyle(entryPagePath);
+    // 4、创建通信桥 bridge
+    const entryPageBridge = this.createBridge();
+    this.bridgeList.push(entryPageBridge);
   }
 
   // 生命周期
@@ -46,6 +52,12 @@ export class MiniAppSandbox {
 
   onPresentOut() {
     console.log("MiniAppSandbox：onPresentOut");
+  }
+  // 创建通信桥
+  createBridge() {
+    const bridge = new Bridge();
+    bridge.parent = this
+    return bridge;
   }
   // 初始化容器
   initPageFrame() {
