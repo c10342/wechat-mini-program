@@ -1,0 +1,145 @@
+view, text, image {
+  box-sizing: border-box;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.header {
+  width: 100%;
+  padding: 30px 0 20px;
+  text-align: center;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #ffffff;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  display: block;
+}
+
+.card {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333333;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.counter-display {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.counter-number {
+  font-size: 64px;
+  font-weight: bold;
+  color: #667eea;
+  display: block;
+}
+
+.counter-label {
+  font-size: 14px;
+  color: #999999;
+  display: block;
+  margin-top: 4px;
+}
+
+.btn-group {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.btn {
+  display: inline-block;
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  color: #ffffff;
+  transition: opacity 0.2s;
+}
+
+.btn-primary {
+  background: #667eea;
+}
+
+.btn-danger {
+  background: #f56c6c;
+}
+
+.btn-success {
+  background: #67c23a;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid #667eea;
+  color: #667eea;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.info-label {
+  font-size: 14px;
+  color: #999999;
+}
+
+.info-value {
+  font-size: 14px;
+  color: #333333;
+  font-weight: 500;
+}
+
+.nav-btn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 16px;
+  text-align: center;
+}
+
+.footer {
+  margin-top: 30px;
+  padding: 16px;
+  text-align: center;
+}
+
+.footer-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}

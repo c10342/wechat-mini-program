@@ -1,3 +1,0 @@
-逻辑线程SDK
-
-运行在webworker中

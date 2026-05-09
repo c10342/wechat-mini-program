@@ -1,0 +1,61 @@
+
+
+
+
+Page({
+  data: {
+    motto: 'Hello MiniApp!',
+    subtitle: 'Dual-Thread Architecture Demo',
+    count: 0,
+    clickCount: 0,
+    platform: 'Electron',
+    version: '1.0.0',
+  },
+
+  onLoad: function () {
+    console.log('[Index Page] onLoad');
+    var sysInfo = wx.getSystemInfoSync();
+    this.setData({
+      platform: sysInfo.platform,
+    });
+  },
+
+  onShow: function () {
+    console.log('[Index Page] onShow');
+  },
+
+  increment: function () {
+    var newCount = this.data.count + 1;
+    var newClickCount = this.data.clickCount + 1;
+    this.setData({
+      count: newCount,
+      clickCount: newClickCount,
+    });
+  },
+
+  decrement: function () {
+    var newCount = this.data.count - 1;
+    var newClickCount = this.data.clickCount + 1;
+    this.setData({
+      count: newCount,
+      clickCount: newClickCount,
+    });
+  },
+
+  reset: function () {
+    this.setData({
+      count: 0,
+      clickCount: 0,
+    });
+    wx.showToast({
+      title: 'Reset!',
+      duration: 1000,
+    });
+  },
+
+  goToDetail: function () {
+    wx.navigateTo({
+      url: '/pages/detail/index?from=home&count=' + this.data.count,
+    });
+  },
+});

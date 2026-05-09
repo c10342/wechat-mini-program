@@ -1,0 +1,31 @@
+<view class="container">
+  <view class="header">
+    <text class="title">Detail Page</text>
+    <text class="subtitle">This is a second page</text>
+  </view>
+
+  <view class="card">
+    <text class="card-title">Page Info</text>
+    <view class="info-row">
+      <text class="info-label">From</text>
+      <text class="info-value">{{from}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">Home Count</text>
+      <text class="info-value">{{homeCount}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">Visits</text>
+      <text class="info-value">{{visitCount}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="card-title">Actions</text>
+    <view class="btn-group" style="margin-top: 12px;">
+      <view class="btn btn-primary" bindtap="addVisit">Add Visit</view>
+    </view>
+  </view>
+
+  <view class="back-btn" bindtap="goBack">Back to Home</view>
+</view>

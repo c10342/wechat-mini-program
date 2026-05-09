@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "pages/index",
+    "pages/detail"
+  ],
+  "window": {
+    "navigationBarTitleText": "MiniApp Demo",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f7f7",
+    "width": 375,
+    "height": 667
+  }
+}
