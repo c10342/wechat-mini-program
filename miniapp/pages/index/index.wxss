@@ -93,6 +93,10 @@
   background: #67c23a;
 }
 
+.btn-warning {
+  background: #e6a23c;
+}
+
 .info-row {
   display: flex;
   justify-content: space-between;

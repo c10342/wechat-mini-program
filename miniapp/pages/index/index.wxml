@@ -35,6 +35,13 @@
     </view>
   </view>
 
+  <view class="card">
+    <text class="card-title">Notification</text>
+    <view class="btn-group">
+      <view class="btn btn-warning" bindtap="showNotification">Send Notification</view>
+    </view>
+  </view>
+
   <view class="nav-btn" bindtap="goToDetail">Go to Detail Page</view>
 
   <view class="footer">

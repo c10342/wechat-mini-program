@@ -7,7 +7,7 @@ let worker = null;
 const pageStack = [];
 const pageViewIds = {};
 const pageDataCache = {};
-let globalAppStyle = '';
+let globalAppStyle = "";
 
 const NAV_HEIGHT = 44;
 const ANIM_DURATION = 280;
@@ -18,9 +18,9 @@ function deepClone(obj) {
 
 function convertWxssSelectors(css) {
   var output = css;
-  output = output.replace(/(^|[\s{},>~+])view(?=[\s{},:>.~+\[]|$)/g, '$1div');
-  output = output.replace(/(^|[\s{},>~+])text(?=[\s{},:>.~+\[]|$)/g, '$1span');
-  output = output.replace(/(^|[\s{},>~+])image(?=[\s{},:>.~+\[]|$)/g, '$1img');
+  output = output.replace(/(^|[\s{},>~+])view(?=[\s{},:>.~+\[]|$)/g, "$1div");
+  output = output.replace(/(^|[\s{},>~+])text(?=[\s{},:>.~+\[]|$)/g, "$1span");
+  output = output.replace(/(^|[\s{},>~+])image(?=[\s{},:>.~+\[]|$)/g, "$1img");
   return output;
 }
 
@@ -28,29 +28,31 @@ function convertWxmlTags(html) {
   var temp = html;
   temp = temp.replace(/<image([^>]*?)\/?\s*>/gi, function (match, attrs) {
     var srcMatch = attrs.match(/src=["']([^"']*)["']/);
-    var src = srcMatch ? srcMatch[1] : '';
+    var src = srcMatch ? srcMatch[1] : "";
     return '<img src="' + src + '" style="display:block;max-width:100%;" />';
   });
-  temp = temp.replace(/<view(\s[^>]*)?>/gi, '<div$1>');
-  temp = temp.replace(/<\/view>/gi, '</div>');
-  temp = temp.replace(/<text(\s[^>]*)?>/gi, '<span$1>');
-  temp = temp.replace(/<\/text>/gi, '</span>');
+  temp = temp.replace(/<view(\s[^>]*)?>/gi, "<div$1>");
+  temp = temp.replace(/<\/view>/gi, "</div>");
+  temp = temp.replace(/<text(\s[^>]*)?>/gi, "<span$1>");
+  temp = temp.replace(/<\/text>/gi, "</span>");
   return temp;
 }
 
 function renderTemplate(tpl, data) {
-  if (!tpl || !data) return '';
+  if (!tpl || !data) return "";
   var output = tpl;
   output = output.replace(/\{\{(.*?)\}\}/g, function (match, expr) {
     try {
-      var keys = expr.trim().split('.');
+      var keys = expr.trim().split(".");
       var value = data;
       for (var i = 0; i < keys.length; i++) {
-        if (value == null) return '';
+        if (value == null) return "";
         value = value[keys[i]];
       }
-      return value != null ? String(value) : '';
-    } catch (e) { return ''; }
+      return value != null ? String(value) : "";
+    } catch (e) {
+      return "";
+    }
   });
   return convertWxmlTags(output);
 }
@@ -61,45 +63,47 @@ function getBounds(offsetX) {
     x: offsetX,
     y: NAV_HEIGHT,
     width: window.innerWidth,
-    height: window.innerHeight - NAV_HEIGHT
+    height: window.innerHeight - NAV_HEIGHT,
   };
 }
 
 async function createPageView(pagePath) {
-  const viewId = await ipcRenderer.invoke('create-page-view');
+  const viewId = await ipcRenderer.invoke("create-page-view");
   pageViewIds[pagePath] = viewId;
   return viewId;
 }
 
 async function renderPageInView(viewId, pagePath, data) {
-  var tplPath = pagePath + '/index.wxml';
-  var stylePath = pagePath + '/index.wxss';
-  var configPath = pagePath + '/index.json';
+  var tplPath = pagePath + "/index.wxml";
+  var stylePath = pagePath + "/index.wxss";
+  var configPath = pagePath + "/index.json";
 
   var [tplResult, styleResult, configResult] = await Promise.all([
-    ipcRenderer.invoke('read-file', tplPath),
-    ipcRenderer.invoke('read-file', stylePath),
-    ipcRenderer.invoke('read-file', configPath),
+    ipcRenderer.invoke("read-file", tplPath),
+    ipcRenderer.invoke("read-file", stylePath),
+    ipcRenderer.invoke("read-file", configPath),
   ]);
 
   var pageConfig = {};
   if (configResult.success) {
-    try { pageConfig = JSON.parse(configResult.content); } catch (e) {}
+    try {
+      pageConfig = JSON.parse(configResult.content);
+    } catch (e) {}
   }
 
-  var html = '';
+  var html = "";
   if (tplResult.success) {
     html = renderTemplate(tplResult.content, data);
   }
 
-  var style = '';
+  var style = "";
   if (styleResult.success) {
     style = convertWxssSelectors(styleResult.content);
   }
 
-  ipcRenderer.send('send-to-page-view', {
+  ipcRenderer.send("send-to-page-view", {
     viewId,
-    channel: 'render',
+    channel: "render",
     data: { html, style, globalStyle: globalAppStyle },
   });
 
@@ -107,43 +111,45 @@ async function renderPageInView(viewId, pagePath, data) {
 }
 
 function updateNavBar(pageConfig) {
-  var navTitle = document.getElementById('nav-title');
-  var navBack = document.getElementById('nav-back');
+  var navTitle = document.getElementById("nav-title");
+  var navBack = document.getElementById("nav-back");
   if (navTitle) {
-    navTitle.textContent = pageConfig.navigationBarTitleText ||
-      (appConfig.window && appConfig.window.navigationBarTitleText) || '';
+    navTitle.textContent =
+      pageConfig.navigationBarTitleText ||
+      (appConfig.window && appConfig.window.navigationBarTitleText) ||
+      "";
   }
   if (navBack) {
-    navBack.style.display = pageStack.length > 1 ? 'flex' : 'none';
+    navBack.style.display = pageStack.length > 1 ? "flex" : "none";
   }
 }
 
 function setViewBounds(pagePath, bounds) {
   var viewId = pageViewIds[pagePath];
   if (viewId) {
-    ipcRenderer.send('set-page-view-bounds', { viewId, bounds: bounds });
+    ipcRenderer.send("set-page-view-bounds", { viewId, bounds: bounds });
   }
 }
 
 function showPage(pagePath) {
   var viewId = pageViewIds[pagePath];
   if (viewId) {
-    ipcRenderer.send('show-page-view', { viewId });
-    ipcRenderer.send('set-page-view-bounds', { viewId, bounds: getBounds() });
+    ipcRenderer.send("show-page-view", { viewId });
+    ipcRenderer.send("set-page-view-bounds", { viewId, bounds: getBounds() });
   }
 }
 
 function hidePage(pagePath) {
   var viewId = pageViewIds[pagePath];
   if (viewId) {
-    ipcRenderer.send('hide-page-view', { viewId });
+    ipcRenderer.send("hide-page-view", { viewId });
   }
 }
 
 function destroyPage(pagePath) {
   var viewId = pageViewIds[pagePath];
   if (viewId) {
-    ipcRenderer.send('destroy-page-view', { viewId });
+    ipcRenderer.send("destroy-page-view", { viewId });
     delete pageViewIds[pagePath];
     delete pageDataCache[pagePath];
   }
@@ -225,27 +231,34 @@ function handleNavigateBack(delta) {
   var topPage = pageStack.pop();
   var bottomPage = pageStack[pageStack.length - 1];
 
-  worker.postMessage({ type: 'notifyPageHide', data: { path: topPage } });
+  worker.postMessage({ type: "notifyPageHide", data: { path: topPage } });
 
   animateSlideOut(topPage, bottomPage, function () {
     if (bottomPage) {
-      var configPath = bottomPage + '/index.json';
-      ipcRenderer.invoke('read-file', configPath).then(function (result) {
+      var configPath = bottomPage + "/index.json";
+      ipcRenderer.invoke("read-file", configPath).then(function (result) {
         var pc = {};
-        if (result.success) { try { pc = JSON.parse(result.content); } catch (e) {} }
+        if (result.success) {
+          try {
+            pc = JSON.parse(result.content);
+          } catch (e) {}
+        }
         updateNavBar(pc);
       });
 
-      worker.postMessage({ type: 'notifyPageShow', data: { path: bottomPage } });
+      worker.postMessage({
+        type: "notifyPageShow",
+        data: { path: bottomPage },
+      });
     }
   });
 }
 
-document.getElementById('nav-back').addEventListener('click', function () {
+document.getElementById("nav-back").addEventListener("click", function () {
   handleNavigateBack(1);
 });
 
-window.addEventListener('resize', function () {
+window.addEventListener("resize", function () {
   var current = pageStack[pageStack.length - 1];
   if (current) {
     setViewBounds(current, getBounds(0));
@@ -260,9 +273,9 @@ ipcRenderer.onPageViewEvent(function (msg) {
   var currentPath = pageStack[pageStack.length - 1];
   if (!currentPath) return;
 
-  console.log('[Container] Event from view:', eventName, 'page:', currentPath);
+  console.log("[Container] Event from view:", eventName, "page:", currentPath);
   worker.postMessage({
-    type: 'event',
+    type: "event",
     data: {
       pagePath: currentPath,
       eventName: eventName,
@@ -272,7 +285,7 @@ ipcRenderer.onPageViewEvent(function (msg) {
 });
 
 function initWorker(bundlePath) {
-  var workerUrl = new URL('file:///' + bundlePath.replace(/\\/g, '/'));
+  var workerUrl = new URL("file:///" + bundlePath.replace(/\\/g, "/"));
   worker = new Worker(workerUrl);
 
   worker.onmessage = function (e) {
@@ -280,17 +293,15 @@ function initWorker(bundlePath) {
   };
 
   worker.onerror = function (err) {
-    console.error('[Container] Worker error:', err);
+    console.error("[Container] Worker error:", err);
   };
 }
 
 var navigatingTo = null;
 
-async function handleWorkerMessage(msg) {
-  var type = msg.type;
-  var data = msg.data;
-
-  if (type === 'pageReady') {
+var messageHandlers = {
+  pageReady: async (msg) => {
+    var data = msg.data;
     var pagePath = data.path;
     var pageData = data.data;
 
@@ -298,12 +309,15 @@ async function handleWorkerMessage(msg) {
 
     var viewId = await createPageView(pagePath);
 
-    ipcRenderer.send('set-page-view-bounds', { viewId, bounds: getBounds(window.innerWidth) });
-    ipcRenderer.send('hide-page-view', { viewId });
+    ipcRenderer.send("set-page-view-bounds", {
+      viewId,
+      bounds: getBounds(window.innerWidth),
+    });
+    ipcRenderer.send("hide-page-view", { viewId });
 
     var pageConfig = await renderPageInView(viewId, pagePath, pageData);
 
-    var isNavigateTo = (navigatingTo === pagePath);
+    var isNavigateTo = navigatingTo === pagePath;
     navigatingTo = null;
 
     if (isNavigateTo && pageStack.length > 0) {
@@ -317,10 +331,16 @@ async function handleWorkerMessage(msg) {
       updateNavBar(pageConfig);
     }
 
-    console.log('[Container] Page ready:', pagePath, 'stack:', JSON.stringify(pageStack));
-  }
+    console.log(
+      "[Container] Page ready:",
+      pagePath,
+      "stack:",
+      JSON.stringify(pageStack),
+    );
+  },
+  setData: async (msg) => {
+    var data = msg.data;
 
-  if (type === 'setData') {
     var pagePath = data.path;
     var fullData = data.fullData;
 
@@ -329,45 +349,84 @@ async function handleWorkerMessage(msg) {
     var viewId = pageViewIds[pagePath];
     if (viewId) {
       await renderPageInView(viewId, pagePath, fullData);
-      console.log('[Container] Data updated:', pagePath);
+      console.log("[Container] Data updated:", pagePath);
     }
-  }
+  },
+  navigateTo: async (msg) => {
+    var data = msg.data;
 
-  if (type === 'navigateTo') {
     navigatingTo = data.path;
-    console.log('[Container] navigateTo:', data.path);
-  }
-
-  if (type === 'navigateBack') {
+    console.log("[Container] navigateTo:", data.path);
+  },
+  navigateBack: async (msg) => {
+    var data = msg.data;
     handleNavigateBack(data.delta);
-  }
-
-  if (type === 'showToast') {
+  },
+  showToast: (msg) => {
+    var data = msg.data;
     var currentPath = pageStack[pageStack.length - 1];
     var viewId = pageViewIds[currentPath];
     if (viewId) {
-      ipcRenderer.send('send-to-page-view', {
+      ipcRenderer.send("send-to-page-view", {
         viewId: viewId,
-        channel: 'render',
-        data: { showToast: true, toastTitle: data.title, toastDuration: data.duration },
+        channel: "render",
+        data: {
+          showToast: true,
+          toastTitle: data.title,
+          toastDuration: data.duration,
+        },
       });
     }
-  }
-
-  if (type === 'readFile') {
+  },
+  showNotification: async (msg) => {
+    var data = msg.data;
+    if (Notification.permission === "granted") {
+      new Notification(data.title || "Notification", {
+        body: data.body || "",
+        icon: data.icon || "",
+        tag: data.tag || "",
+      });
+    } else if (Notification.permission !== "denied") {
+      Notification.requestPermission().then(function (perm) {
+        if (perm === "granted") {
+          new Notification(data.title || "Notification", {
+            body: data.body || "",
+            icon: data.icon || "",
+            tag: data.tag || "",
+          });
+        }
+      });
+    }
+  },
+  readFile: async (msg) => {
+    var data = msg.data;
     var id = data.id;
     var filePath = data.path;
-    var result = await ipcRenderer.invoke('read-file', filePath);
-    worker.postMessage({ type: 'fileResponse', data: { id: id, result: result } });
+    var result = await ipcRenderer.invoke("read-file", filePath);
+    worker.postMessage({
+      type: "fileResponse",
+      data: { id: id, result: result },
+    });
+  },
+};
+
+async function handleWorkerMessage(msg) {
+  var type = msg.type;
+  var handler = messageHandlers[type];
+
+  if (handler) {
+    await handler(msg);
+  } else {
+    console.error("[Container] Unknown message type:", type);
   }
 }
 
 async function loadAppStyles() {
-  var result = await ipcRenderer.invoke('read-file', 'app.wxss');
+  var result = await ipcRenderer.invoke("read-file", "app.wxss");
   if (result.success) {
     globalAppStyle = convertWxssSelectors(result.content);
-    var style = document.createElement('style');
-    style.id = 'app-style';
+    var style = document.createElement("style");
+    style.id = "app-style";
     style.textContent = globalAppStyle;
     document.head.appendChild(style);
   }
@@ -377,13 +436,13 @@ ipcRenderer.onInitContainer(async function (initData) {
   appConfig = initData.config;
   appDir = initData.appDir;
 
-  console.log('[Container] Config loaded:', JSON.stringify(appConfig));
+  console.log("[Container] Config loaded:", JSON.stringify(appConfig));
 
   await loadAppStyles();
 
-  var bundlePath = await ipcRenderer.invoke('build-worker-bundle');
+  var bundlePath = await ipcRenderer.invoke("build-worker-bundle");
 
   initWorker(bundlePath);
 
-  worker.postMessage({ type: 'init', data: { config: appConfig } });
+  worker.postMessage({ type: "init", data: { config: appConfig } });
 });

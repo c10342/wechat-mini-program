@@ -53,6 +53,17 @@ Page({
     });
   },
 
+  showNotification: function () {
+    wx.showNotification({
+      title: 'MiniApp Notification',
+      body: 'This is a desktop notification from your mini program!',
+      tag: 'demo-notification',
+      success: function () {
+        console.log('[Index Page] Notification sent');
+      },
+    });
+  },
+
   goToDetail: function () {
     wx.navigateTo({
       url: '/pages/detail/index?from=home&count=' + this.data.count,

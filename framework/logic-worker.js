@@ -147,6 +147,15 @@ self.wx = {
   showToast: function (params) {
     sendMessage('showToast', params);
   },
+  showNotification: function (params) {
+    sendMessage('showNotification', {
+      title: params.title || '',
+      body: params.body || '',
+      icon: params.icon || '',
+      tag: params.tag || '',
+    });
+    if (params.success) params.success();
+  },
   getApp: function () {
     return { globalData: appMethods.globalData };
   },
