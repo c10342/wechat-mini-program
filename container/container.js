@@ -265,7 +265,33 @@ function renderTemplate(tpl, data) {
   return convertWxmlTags(output);
 }
 
+async function loadGlobalComponentTemplates() {
+  if (!appConfig || !appConfig.usingComponents) return;
+
+  var usingComponents = appConfig.usingComponents;
+  var compNames = Object.keys(usingComponents);
+
+  for (var i = 0; i < compNames.length; i++) {
+    var compPath = usingComponents[compNames[i]];
+    if (compPath.startsWith("/")) {
+      compPath = compPath.slice(1);
+    }
+
+    if (componentTemplateCache[compPath]) continue;
+
+    var [tplResult, styleResult] = await Promise.all([
+      ipcRenderer.invoke("read-file", compPath + "/index.wxml"),
+      ipcRenderer.invoke("read-file", compPath + "/index.wxss"),
+    ]);
+
+    componentTemplateCache[compPath] = tplResult.success ? tplResult.content : "";
+    componentStyleCache[compPath] = styleResult.success ? styleResult.content : "";
+  }
+}
+
 async function loadComponentTemplates(pagePath) {
+  await loadGlobalComponentTemplates();
+
   var configPath = pagePath + "/index.json";
   var result = await ipcRenderer.invoke("read-file", configPath);
   if (!result.success) return;
@@ -290,12 +316,9 @@ async function loadComponentTemplates(pagePath) {
 
     if (componentTemplateCache[compPath]) continue;
 
-    var tplPath = compPath + "/index.wxml";
-    var stylePath = compPath + "/index.wxss";
-
     var [tplResult, styleResult] = await Promise.all([
-      ipcRenderer.invoke("read-file", tplPath),
-      ipcRenderer.invoke("read-file", stylePath),
+      ipcRenderer.invoke("read-file", compPath + "/index.wxml"),
+      ipcRenderer.invoke("read-file", compPath + "/index.wxss"),
     ]);
 
     componentTemplateCache[compPath] = tplResult.success ? tplResult.content : "";

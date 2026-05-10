@@ -6,6 +6,7 @@ let pageInstances = {};
 const componentDefinitions = {};
 const componentInstances = {};
 const pageComponentRegistry = {};
+const globalComponentRegistry = {};
 
 const appMethods = {
   onLaunch: null,
@@ -249,7 +250,48 @@ function executeScriptForComponent(code, fromPath) {
   }
 }
 
+async function loadGlobalComponents() {
+  if (!appConfig || !appConfig.usingComponents) return;
+
+  var usingComponents = appConfig.usingComponents;
+  var compNames = Object.keys(usingComponents);
+
+  for (var i = 0; i < compNames.length; i++) {
+    var compName = compNames[i];
+    var compPath = usingComponents[compName];
+    if (compPath.startsWith("/")) {
+      compPath = compPath.slice(1);
+    }
+
+    var compDef = await loadComponentScript(compPath);
+    if (!compDef) {
+      console.error("[Worker] Failed to load global component:", compName, "at", compPath);
+      continue;
+    }
+
+    globalComponentRegistry[compName] = {
+      path: compPath,
+      definition: compDef,
+    };
+
+    console.log("[Worker] Global component loaded:", compName, "->", compPath);
+  }
+}
+
 async function loadPageComponents(pagePath) {
+  if (!pageComponentRegistry[pagePath]) {
+    pageComponentRegistry[pagePath] = {};
+  }
+
+  Object.keys(globalComponentRegistry).forEach(function (compName) {
+    var gComp = globalComponentRegistry[compName];
+    pageComponentRegistry[pagePath][compName] = {
+      path: gComp.path,
+      uid: pagePath + "::" + compName,
+      definition: gComp.definition,
+    };
+  });
+
   var configPath = pagePath + "/index.json";
   var result = await requestFile(configPath);
   if (!result.success) return;
@@ -264,16 +306,19 @@ async function loadPageComponents(pagePath) {
   var usingComponents = pageConfig.usingComponents;
   if (!usingComponents || typeof usingComponents !== "object") return;
 
-  if (!pageComponentRegistry[pagePath]) {
-    pageComponentRegistry[pagePath] = {};
-  }
-
   var compNames = Object.keys(usingComponents);
   for (var i = 0; i < compNames.length; i++) {
     var compName = compNames[i];
     var compPath = usingComponents[compName];
     if (compPath.startsWith("/")) {
       compPath = compPath.slice(1);
+    }
+
+    if (globalComponentRegistry[compName]) {
+      console.warn(
+        "[Worker] Component '" + compName + "' is registered both globally and in page '" + pagePath + "'. " +
+        "Page-level registration takes priority."
+      );
     }
 
     var compDef = await loadComponentScript(compPath);
@@ -289,7 +334,7 @@ async function loadPageComponents(pagePath) {
       definition: compDef,
     };
 
-    console.log("[Worker] Component loaded:", compName, "->", compPath);
+    console.log("[Worker] Page component loaded:", compName, "->", compPath, "(page:", pagePath + ")");
   }
 }
 
@@ -758,6 +803,8 @@ var messageHandlers = {
     var data = msg.data;
     appConfig = data.config;
     console.log("[Worker] Config loaded:", JSON.stringify(appConfig));
+
+    await loadGlobalComponents();
 
     await loadAppScript();
 

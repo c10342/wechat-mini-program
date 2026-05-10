@@ -10,5 +10,8 @@
     "backgroundColor": "#f7f7f7",
     "width": 375,
     "height": 667
+  },
+  "usingComponents": {
+    "my-counter": "/components/counter"
   }
 }
