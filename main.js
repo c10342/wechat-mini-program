@@ -127,10 +127,7 @@ ipcMain.handle('read-file', async (event, relativePath) => {
 });
 
 ipcMain.handle('build-worker-bundle', async () => {
-  const workerCode = fs.readFileSync(path.join(__dirname, 'framework', 'logic-worker.js'), 'utf-8');
-  const bundlePath = path.join(__dirname, 'container', 'worker-bundle.js');
-  fs.writeFileSync(bundlePath, workerCode, 'utf-8');
-  return bundlePath;
+  return path.join(__dirname, 'framework', 'logic-worker.js');
 });
 
 app.whenReady().then(() => {
