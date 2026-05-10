@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      background: #f7f7f7;
+    }
+    #page-root { width: 100%; min-height: 100%; }
+    #page-style { display: none; }
+  </style>
+  <style id="page-style"></style>
+  <style id="global-style"></style>
+</head>
+<body>
+  <div id="page-root"></div>
+  <script type="module" src="../../dist/page-view.js"></script>
+</body>
+</html>

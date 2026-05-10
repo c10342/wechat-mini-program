@@ -28,7 +28,7 @@ function createMainWindow(config) {
     },
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'container', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, 'src', 'container', 'index.html'));
 
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow.webContents.send('init-container', {
@@ -64,7 +64,7 @@ ipcMain.handle('create-page-view', async (event) => {
 
   await new Promise((resolve) => {
     view.webContents.on('did-finish-load', resolve);
-    view.webContents.loadFile(path.join(__dirname, 'container', 'page-view.html'));
+    view.webContents.loadFile(path.join(__dirname, 'src', 'page-view', 'page-view.html'));
   });
 
   return viewId;
@@ -127,7 +127,7 @@ ipcMain.handle('read-file', async (event, relativePath) => {
 });
 
 ipcMain.handle('build-worker-bundle', async () => {
-  return path.join(__dirname, 'framework', 'logic-worker.js');
+  return path.join(__dirname, 'dist', 'worker.js');
 });
 
 ipcMain.handle('show-open-dialog', async (event, options) => {
