@@ -64,8 +64,36 @@ function evaluateCondition(condition, data) {
   return !!val;
 }
 
+function processWxFor(tpl, data) {
+  var output = tpl;
+  output = output.replace(/<(\w+)([^>]*)\swx:for="([^"]*)"(?:\s+wx:for-item="([^"]*)")?(?:\s+wx:for-index="([^"]*)")?([^>]*)>([\s\S]*?)<\/\1>/g, function (match, tag, before, listExpr, itemName, indexName, after, content) {
+    var expr = listExpr.trim();
+    if (expr.startsWith("{{") && expr.endsWith("}}")) {
+      expr = expr.slice(2, -2).trim();
+    }
+    var list = resolveExpr(expr, data);
+    if (!Array.isArray(list)) return "";
+    var item = itemName || "item";
+    var index = indexName || "index";
+    var result = "";
+    for (var i = 0; i < list.length; i++) {
+      var itemData = Object.assign({}, data);
+      itemData[item] = list[i];
+      itemData[index] = i;
+      var rendered = content.replace(/\{\{(.*?)\}\}/g, function (m, e) {
+        var value = resolveExpr(e.trim(), itemData);
+        return value != null ? String(value) : "";
+      });
+      result += "<" + tag + before + after + ">" + rendered + "</" + tag + ">";
+    }
+    return result;
+  });
+  return output;
+}
+
 function processWxDirectives(tpl, data) {
   var output = tpl;
+  output = processWxFor(output, data);
   output = output.replace(/<(\w+)([^>]*)\swx:if="([^"]*)"([^>]*)>([\s\S]*?)<\/\1>/g, function (match, tag, before, condition, after, content) {
     if (evaluateCondition(condition, data)) {
       return "<" + tag + before + after + ">" + content + "</" + tag + ">";

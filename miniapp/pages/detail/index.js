@@ -5,6 +5,14 @@ Page({
     from: 'unknown',
     homeCount: 0,
     visitCount: 0,
+    features: [
+      { name: 'Data Binding', desc: '{{expr}} syntax' },
+      { name: 'Conditional', desc: 'wx:if directive' },
+      { name: 'List Rendering', desc: 'wx:for directive' },
+      { name: 'Events', desc: 'bindtap / bind:event' },
+    ],
+    todos: [],
+    todoCounter: 0,
   },
 
   onLoad: function (options) {
@@ -26,6 +34,13 @@ Page({
       title: 'Visit #' + count,
       duration: 800,
     });
+  },
+
+  addTodo: function () {
+    var todos = this.data.todos.slice();
+    this.data.todoCounter++;
+    todos.push('Todo item #' + this.data.todoCounter);
+    this.setData({ todos: todos });
   },
 
   goBack: function () {

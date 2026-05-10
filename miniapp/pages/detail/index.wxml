@@ -21,9 +21,27 @@
   </view>
 
   <view class="card">
+    <text class="card-title">Feature List (wx:for)</text>
+    <view class="feature-item" wx:for="{{features}}">
+      <text class="feature-index">{{index}}</text>
+      <text class="feature-name">{{item.name}}</text>
+      <text class="feature-desc">{{item.desc}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="card-title">Todo List (wx:for + wx:for-item)</text>
+    <view class="todo-item" wx:for="{{todos}}" wx:for-item="todo" wx:for-index="idx">
+      <text class="todo-text">{{idx + 1}}. {{todo}}</text>
+    </view>
+    <view class="empty-hint" wx:if="{{todos.length === 0}}">No todos</view>
+  </view>
+
+  <view class="card">
     <text class="card-title">Actions</text>
     <view class="btn-group" style="margin-top: 12px;">
       <view class="btn btn-primary" bindtap="addVisit">Add Visit</view>
+      <view class="btn btn-success" bindtap="addTodo">Add Todo</view>
     </view>
   </view>
 

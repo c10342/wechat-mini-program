@@ -72,3 +72,56 @@
   font-size: 16px;
   text-align: center;
 }
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.feature-index {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f093fb;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.feature-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  margin-left: 12px;
+}
+
+.feature-desc {
+  font-size: 13px;
+  color: #999;
+  margin-left: auto;
+}
+
+.todo-item {
+  padding: 10px 12px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.todo-text {
+  font-size: 14px;
+  color: #333;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: #ccc;
+  text-align: center;
+  padding: 12px 0;
+}
