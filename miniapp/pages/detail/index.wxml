@@ -33,6 +33,7 @@
     <text class="card-title">Todo List (wx:for + wx:for-item)</text>
     <view class="todo-item" wx:for="{{todos}}" wx:for-item="todo" wx:for-index="idx">
       <text class="todo-text">{{idx + 1}}. {{todo}}</text>
+      <view class="todo-delete" bindtap="deleteTodo" data-idx="{{idx}}">✕</view>
     </view>
     <view class="empty-hint" wx:if="{{todos.length === 0}}">No todos</view>
   </view>

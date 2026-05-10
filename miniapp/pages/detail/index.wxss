@@ -108,6 +108,9 @@
 }
 
 .todo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 10px 12px;
   background: #f9f9f9;
   border-radius: 6px;
@@ -117,6 +120,21 @@
 .todo-text {
   font-size: 14px;
   color: #333;
+}
+
+.todo-delete {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f5576c;
+  color: #fff;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 10px;
+  cursor: pointer;
 }
 
 .empty-hint {

@@ -96,15 +96,57 @@ function evaluateCondition(condition, data) {
   return !!val;
 }
 
+function findMatchingCloseTag(tpl, tag, openStart) {
+  var depth = 0;
+  var openRegex = new RegExp("<" + tag.replace(/-/g, "\\-") + "(\\s[^>]*)?>", "g");
+  var closeRegex = new RegExp("<\\/" + tag.replace(/-/g, "\\-") + ">", "g");
+  openRegex.lastIndex = openStart;
+  closeRegex.lastIndex = openStart;
+  var openMatch, closeMatch;
+  var lastClose = openStart;
+  while (true) {
+    openMatch = openRegex.exec(tpl);
+    closeMatch = closeRegex.exec(tpl);
+    if (!closeMatch) return -1;
+    if (!openMatch || openMatch.index > closeMatch.index) {
+      if (depth === 0) {
+        return closeMatch.index;
+      }
+      depth--;
+      lastClose = closeRegex.lastIndex;
+    } else {
+      depth++;
+    }
+  }
+}
+
 function processWxFor(tpl, data) {
   var output = tpl;
-  output = output.replace(/<(\w+[\w-]*)([^>]*)\swx:for="([^"]*)"(?:\s+wx:for-item="([^"]*)")?(?:\s+wx:for-index="([^"]*)")?([^>]*)>([\s\S]*?)<\/\1>/g, function (match, tag, before, listExpr, itemName, indexName, after, content) {
+  var wxForOpenRegex = /<(\w+[\w-]*)([^>]*)\swx:for="([^"]*)"(?:\s+wx:for-item="([^"]*)")?(?:\s+wx:for-index="([^"]*)")?([^>]*)>/;
+  while (true) {
+    var match = wxForOpenRegex.exec(output);
+    if (!match) break;
+    var tag = match[1];
+    var openStart = match.index;
+    var openEnd = openStart + match[0].length;
+    var closePos = findMatchingCloseTag(output, tag, openEnd);
+    if (closePos === -1) break;
+    var content = output.substring(openEnd, closePos);
+    var fullEnd = closePos + ("</" + tag + ">").length;
+
+    var listExpr = match[3];
+    var itemName = match[4];
+    var indexName = match[5];
+
     var expr = listExpr.trim();
     if (expr.startsWith("{{") && expr.endsWith("}}")) {
       expr = expr.slice(2, -2).trim();
     }
     var list = resolveExpr(expr, data);
-    if (!Array.isArray(list)) return "";
+    if (!Array.isArray(list)) {
+      output = output.substring(0, openStart) + output.substring(fullEnd);
+      continue;
+    }
     var item = itemName || "item";
     var index = indexName || "index";
     var result = "";
@@ -116,10 +158,10 @@ function processWxFor(tpl, data) {
         var value = resolveExpr(e.trim(), itemData);
         return value != null ? String(value) : "";
       });
-      result += "<" + tag + before + after + ">" + rendered + "</" + tag + ">";
+      result += "<" + tag + match[2] + match[6] + ">" + rendered + "</" + tag + ">";
     }
-    return result;
-  });
+    output = output.substring(0, openStart) + result + output.substring(fullEnd);
+  }
   return output;
 }
 
@@ -128,47 +170,65 @@ function processWxIf(tpl, data) {
   var changed = true;
   while (changed) {
     changed = false;
-    var ifRegex = /<(\w+[\w-]*)([^>]*)\swx:if="([^"]*)"([^>]*)>([\s\S]*?)<\/\1>/;
-    var match = ifRegex.exec(output);
+    var ifOpenRegex = /<(\w+[\w-]*)([^>]*)\swx:if="([^"]*)"([^>]*)>/;
+    var match = ifOpenRegex.exec(output);
     if (!match) break;
 
     var tag = match[1];
-    var chainStart = match.index;
-    var chainEnd = chainStart + match[0].length;
+    var openStart = match.index;
+    var openEnd = openStart + match[0].length;
+    var closePos = findMatchingCloseTag(output, tag, openEnd);
+    if (closePos === -1) break;
+    var closeTagLen = ("</" + tag + ">").length;
+    var content = output.substring(openEnd, closePos);
+    var chainStart = openStart;
+    var chainEnd = closePos + closeTagLen;
 
     var blocks = [];
-    blocks.push({ condition: match[3], before: match[2], after: match[4], content: match[5] });
+    blocks.push({ condition: match[3], before: match[2], after: match[4], content: content });
 
     var remaining = output.substring(chainEnd);
 
-    var elifRegex = new RegExp(
-      "^\\s*<" + tag.replace(/-/g, "\\-") + "([^>]*)\\s+wx:elif=\"([^\"]*)\"([^>]*)>([\\s\\S]*?)<\\/" + tag.replace(/-/g, "\\-") + ">"
+    var elifOpenRegex = new RegExp(
+      "^\\s*<" + tag.replace(/-/g, "\\-") + "([^>]*)\\s+wx:elif=\"([^\"]*)\"([^>]*)>"
     );
     while (true) {
-      var elifMatch = remaining.match(elifRegex);
+      var elifMatch = remaining.match(elifOpenRegex);
       if (!elifMatch) break;
+      var elifOpenEnd = remaining.indexOf(">", remaining.indexOf("wx:elif")) + 1;
+      var elifOpenStartInRemaining = elifMatch.index;
+      var elifContentStart = elifOpenStartInRemaining + elifOpenEnd;
+      var elifClosePos = findMatchingCloseTag(remaining, tag, elifContentStart);
+      if (elifClosePos === -1) break;
+      var elifFullEnd = elifClosePos + closeTagLen;
       blocks.push({
         condition: elifMatch[2],
         before: elifMatch[1],
         after: elifMatch[3],
-        content: elifMatch[4],
+        content: remaining.substring(elifContentStart, elifClosePos),
       });
-      chainEnd += elifMatch[0].length;
+      chainEnd += elifFullEnd;
       remaining = output.substring(chainEnd);
     }
 
-    var elseRegex = new RegExp(
-      "^\\s*<" + tag.replace(/-/g, "\\-") + "([^>]*)\\s+wx:else([^>]*)>([\\s\\S]*?)<\\/" + tag.replace(/-/g, "\\-") + ">"
+    var elseOpenRegex = new RegExp(
+      "^\\s*<" + tag.replace(/-/g, "\\-") + "([^>]*)\\s+wx:else([^>]*)>"
     );
-    var elseMatch = remaining.match(elseRegex);
+    var elseMatch = remaining.match(elseOpenRegex);
     if (elseMatch) {
-      blocks.push({
-        condition: null,
-        before: elseMatch[1],
-        after: elseMatch[2],
-        content: elseMatch[3],
-      });
-      chainEnd += elseMatch[0].length;
+      var elseOpenEnd = remaining.indexOf(">", remaining.indexOf("wx:else")) + 1;
+      var elseOpenStartInRemaining = elseMatch.index;
+      var elseContentStart = elseOpenStartInRemaining + elseOpenEnd;
+      var elseClosePos = findMatchingCloseTag(remaining, tag, elseContentStart);
+      if (elseClosePos !== -1) {
+        blocks.push({
+          condition: null,
+          before: elseMatch[1],
+          after: elseMatch[2],
+          content: remaining.substring(elseContentStart, elseClosePos),
+        });
+        chainEnd += elseClosePos + closeTagLen;
+      }
     }
 
     var result = "";

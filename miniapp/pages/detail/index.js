@@ -43,6 +43,14 @@ Page({
     this.setData({ todos: todos });
   },
 
+  deleteTodo: function (e) {
+    var idx = e.target.dataset.idx;
+    if (idx == null) return;
+    var todos = this.data.todos.slice();
+    todos.splice(Number(idx), 1);
+    this.setData({ todos: todos });
+  },
+
   goBack: function () {
     wx.navigateBack({ delta: 1 });
   },
