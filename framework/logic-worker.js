@@ -156,6 +156,20 @@ self.wx = {
     });
     if (params.success) params.success();
   },
+  chooseFile: function (params) {
+    params = params || {};
+    var id = ++requestIdCounter;
+    pendingChooseFileCallbacks[id] = {
+      success: params.success || null,
+      fail: params.fail || null,
+    };
+    sendMessage('chooseFile', {
+      id: id,
+      title: params.title || 'Select File',
+      filters: params.filters || [],
+      multiple: params.multiple || false,
+    });
+  },
   getApp: function () {
     return { globalData: appMethods.globalData };
   },
@@ -166,6 +180,7 @@ self.getCurrentPages = function () {
 };
 
 var pendingFileRequests = {};
+var pendingChooseFileCallbacks = {};
 var requestIdCounter = 0;
 
 function requestFile(relativePath) {
@@ -444,6 +459,19 @@ self.onmessage = async function (e) {
     if (pendingFileRequests[id]) {
       pendingFileRequests[id](data.result);
       delete pendingFileRequests[id];
+    }
+  }
+
+  if (type === 'chooseFileResponse') {
+    var respId = data.id;
+    var cb = pendingChooseFileCallbacks[respId];
+    if (cb) {
+      if (data.cancelled) {
+        if (cb.fail) cb.fail({ errMsg: 'cancelled' });
+      } else {
+        if (cb.success) cb.success({ filePaths: data.filePaths });
+      }
+      delete pendingChooseFileCallbacks[respId];
     }
   }
 };

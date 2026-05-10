@@ -97,6 +97,10 @@
   background: #e6a23c;
 }
 
+.btn-info {
+  background: #909399;
+}
+
 .info-row {
   display: flex;
   justify-content: space-between;

@@ -408,6 +408,23 @@ var messageHandlers = {
       data: { id: id, result: result },
     });
   },
+  chooseFile: async (msg) => {
+    var data = msg.data;
+    var id = data.id;
+    var result = await ipcRenderer.invoke("show-open-dialog", {
+      title: data.title,
+      filters: data.filters,
+      multiple: data.multiple,
+    });
+    worker.postMessage({
+      type: "chooseFileResponse",
+      data: {
+        id: id,
+        cancelled: result.cancelled,
+        filePaths: result.filePaths || [],
+      },
+    });
+  },
 };
 
 async function handleWorkerMessage(msg) {

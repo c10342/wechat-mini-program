@@ -64,6 +64,26 @@ Page({
     });
   },
 
+  chooseFile: function () {
+    var that = this;
+    wx.chooseFile({
+      title: 'Choose a File',
+      filters: [
+        { name: 'Images', extensions: ['jpg', 'png', 'gif'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+      success: function (res) {
+        console.log('[Index Page] Files selected:', res.filePaths);
+        that.setData({
+          selectedFile: res.filePaths[0] || '',
+        });
+      },
+      fail: function (err) {
+        console.log('[Index Page] File selection cancelled');
+      },
+    });
+  },
+
   goToDetail: function () {
     wx.navigateTo({
       url: '/pages/detail/index?from=home&count=' + this.data.count,

@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('containerBridge', {
   invoke: (channel, ...args) => {
-    const allowed = ['create-page-view', 'read-file', 'build-worker-bundle'];
+    const allowed = ['create-page-view', 'read-file', 'build-worker-bundle', 'show-open-dialog'];
     if (allowed.includes(channel)) {
       return ipcRenderer.invoke(channel, ...args);
     }

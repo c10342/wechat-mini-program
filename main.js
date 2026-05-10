@@ -1,4 +1,4 @@
-const { app, BrowserWindow, WebContentsView, ipcMain } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain,dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -128,6 +128,18 @@ ipcMain.handle('read-file', async (event, relativePath) => {
 
 ipcMain.handle('build-worker-bundle', async () => {
   return path.join(__dirname, 'framework', 'logic-worker.js');
+});
+
+ipcMain.handle('show-open-dialog', async (event, options) => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return { cancelled: true, filePaths: [] };
+  }
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: options.title || 'Select File',
+    properties: options.multiple ? ['multiSelections', 'openFile'] : ['openFile'],
+    filters: options.filters || [],
+  });
+  return result;
 });
 
 app.whenReady().then(() => {

@@ -42,6 +42,17 @@
     </view>
   </view>
 
+  <view class="card">
+    <text class="card-title">File Chooser</text>
+    <view class="btn-group">
+      <view class="btn btn-info" bindtap="chooseFile">Select File</view>
+    </view>
+    <view class="info-row" wx:if="{{selectedFile}}">
+      <text class="info-label">Selected</text>
+      <text class="info-value">{{selectedFile}}</text>
+    </view>
+  </view>
+
   <view class="nav-btn" bindtap="goToDetail">Go to Detail Page</view>
 
   <view class="footer">
