@@ -397,6 +397,18 @@ self.Page = function (options) {
     instance.onLoad(pendingQuery || {});
   }
 
+  mergedData = deepClone(instance.data);
+  pageComps = pageComponentRegistry[pagePath];
+  if (pageComps) {
+    Object.keys(pageComps).forEach(function (compName) {
+      var compInfo = pageComps[compName];
+      var compInstance = componentInstances[compInfo.uid];
+      if (compInstance) {
+        mergedData["__comp_" + compName] = deepClone(compInstance.data);
+      }
+    });
+  }
+
   sendMessage("pageReady", {
     path: pagePath,
     data: deepClone(mergedData),

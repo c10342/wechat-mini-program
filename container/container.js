@@ -142,7 +142,7 @@ function processWxIf(tpl, data) {
     var remaining = output.substring(chainEnd);
 
     var elifRegex = new RegExp(
-      "^\\s*<" + tag.replace(/-/g, "\\-") + "([^>]*)\\s+wx:elif=\"([^\"]*)\"([^>]*)>([\\s\\S]*?)<" + tag.replace(/-/g, "\\-") + ">"
+      "^\\s*<" + tag.replace(/-/g, "\\-") + "([^>]*)\\s+wx:elif=\"([^\"]*)\"([^>]*)>([\\s\\S]*?)<\\/" + tag.replace(/-/g, "\\-") + ">"
     );
     while (true) {
       var elifMatch = remaining.match(elifRegex);
@@ -158,7 +158,7 @@ function processWxIf(tpl, data) {
     }
 
     var elseRegex = new RegExp(
-      "^\\s*<" + tag.replace(/-/g, "\\-") + "([^>]*)\\s+wx:else([^>]*)>([\\s\\S]*?)<" + tag.replace(/-/g, "\\-") + ">"
+      "^\\s*<" + tag.replace(/-/g, "\\-") + "([^>]*)\\s+wx:else([^>]*)>([\\s\\S]*?)<\\/" + tag.replace(/-/g, "\\-") + ">"
     );
     var elseMatch = remaining.match(elseRegex);
     if (elseMatch) {
