@@ -98,9 +98,9 @@ mini-program/
 
 | 层级 | 位置 | 职责 |
 |------|------|------|
-| **主进程层** | [main.js](file:///e:/project/mini-program/main.js) | 窗口管理，WebContentsView 生命周期，IPC 通道，文件读取代理，Worker 脚本构建 |
-| **渲染层** | [container/](file:///e:/project/mini-program/container) | 导航栏 UI，页面栈管理，路由动画（slideIn/slideOut），WXML→HTML 编译，Worker 消息调度 |
-| **逻辑层** | [framework/logic-worker.js](file:///e:/project/mini-program/framework/logic-worker.js) | 执行 `App()`/`Page()` 注册，管理 Page 实例与 data，处理 `setData`，模拟 `wx` API，模块系统 |
+| **主进程层** | [main.js](main.js) | 窗口管理，WebContentsView 生命周期，IPC 通道，文件读取代理，Worker 脚本构建 |
+| **渲染层** | [container/](container) | 导航栏 UI，页面栈管理，路由动画（slideIn/slideOut），WXML→HTML 编译，Worker 消息调度 |
+| **逻辑层** | [framework/logic-worker.js](framework/logic-worker.js) | 执行 `App()`/`Page()` 注册，管理 Page 实例与 data，处理 `setData`，模拟 `wx` API，模块系统 |
 
 ### 与微信小程序真实架构的对照
 
@@ -128,7 +128,7 @@ mini-program/
 
 主窗口和页面视图均使用独立的 Preload 脚本 + contextBridge，实现**双层安全隔离**：
 
-**主窗口层 — [container-preload.js](file:///e:/project/mini-program/container/container-preload.js)**
+**主窗口层 — [container-preload.js](container/container-preload.js)**
 
 暴露 `containerBridge` 对象，仅允许白名单 IPC 通道：
 ```javascript
@@ -148,7 +148,7 @@ contextBridge.exposeInMainWorld('containerBridge', {
 });
 ```
 
-**页面视图层 — [page-preload.js](file:///e:/project/mini-program/container/page-preload.js)**
+**页面视图层 — [page-preload.js](container/page-preload.js)**
 
 暴露 `pageBridge` 对象，仅允许渲染指令接收和事件发送：
 ```javascript
@@ -158,7 +158,7 @@ contextBridge.exposeInMainWorld('pageBridge', {
 });
 ```
 
-[container.js](file:///e:/project/mini-program/container/container.js) 通过 `window.containerBridge` 访问 IPC，**不直接使用 Node.js API**。
+[container.js](container/container.js) 通过 `window.containerBridge` 访问 IPC，**不直接使用 Node.js API**。
 
 ### 3. 页面栈与路由管理
 
@@ -179,7 +179,7 @@ wx.redirectTo  → 替换栈顶
 
 ### 4. 模板编译引擎
 
-轻量级 WXML → HTML 实时编译，由 [container.js](file:///e:/project/mini-program/container/container.js) 中的 `renderTemplate()` 实现：
+轻量级 WXML → HTML 实时编译，由 [container.js](container/container.js) 中的 `renderTemplate()` 实现：
 
 **数据绑定** — 正则解析 `{{expression}}`，支持多级路径访问：
 ```
@@ -431,7 +431,7 @@ Worker 内实现了简易 CommonJS 模块加载器：
 
 ### App 生命周期
 
-源码：[logic-worker.js:56-62](file:///e:/project/mini-program/framework/logic-worker.js#L56-L62)
+源码：[logic-worker.js:56-62](framework/logic-worker.js#L56-L62)
 
 ```javascript
 App({
@@ -444,14 +444,14 @@ App({
 
 | 生命周期 | 触发时机 | 源码调用位置 |
 |---------|---------|------------|
-| `onLaunch` | Worker 初始化时，App 注册完成后调用一次 | [logic-worker.js:413](file:///e:/project/mini-program/framework/logic-worker.js#L413) |
-| `onShow` | 预留接口，当前未主动触发 | [logic-worker.js:59](file:///e:/project/mini-program/framework/logic-worker.js#L59) |
-| `onHide` | 预留接口，当前未主动触发 | [logic-worker.js:60](file:///e:/project/mini-program/framework/logic-worker.js#L60) |
-| `globalData` | 全局共享数据对象，通过 `wx.getApp().globalData` 访问 | [logic-worker.js:57-58](file:///e:/project/mini-program/framework/logic-worker.js#L57-L58) |
+| `onLaunch` | Worker 初始化时，App 注册完成后调用一次 | [logic-worker.js:413](framework/logic-worker.js#L413) |
+| `onShow` | 预留接口，当前未主动触发 | [logic-worker.js:59](framework/logic-worker.js#L59) |
+| `onHide` | 预留接口，当前未主动触发 | [logic-worker.js:60](framework/logic-worker.js#L60) |
+| `globalData` | 全局共享数据对象，通过 `wx.getApp().globalData` 访问 | [logic-worker.js:57-58](framework/logic-worker.js#L57-L58) |
 
 ### Page 生命周期
 
-源码：[logic-worker.js:64-90](file:///e:/project/mini-program/framework/logic-worker.js#L64-L90)（实例创建）、[logic-worker.js:370-425](file:///e:/project/mini-program/framework/logic-worker.js#L370-L425)（生命周期调用）
+源码：[logic-worker.js:64-90](framework/logic-worker.js#L64-L90)（实例创建）、[logic-worker.js:370-425](framework/logic-worker.js#L370-L425)（生命周期调用）
 
 ```javascript
 Page({
@@ -470,23 +470,23 @@ Page({
 
 | 生命周期 | 触发时机 | 源码调用位置 |
 |---------|---------|------------|
-| `onLoad(query)` | Page 注册后立即调用，接收路由参数对象（query string 解析结果） | [logic-worker.js:82-83](file:///e:/project/mini-program/framework/logic-worker.js#L82-L83) |
-| `onShow()` | 页面脚本加载完成后调用 | [logic-worker.js:392-394](file:///e:/project/mini-program/framework/logic-worker.js#L392-L394) |
-| `onHide()` | 被新页面覆盖时调用（`wx.navigateTo`） | [logic-worker.js:383-385](file:///e:/project/mini-program/framework/logic-worker.js#L383-L385) |
-| `onUnload()` | 页面出栈销毁时调用（`wx.navigateBack`） | [logic-worker.js:418-420](file:///e:/project/mini-program/framework/logic-worker.js#L418-L420) |
+| `onLoad(query)` | Page 注册后立即调用，接收路由参数对象（query string 解析结果） | [logic-worker.js:82-83](framework/logic-worker.js#L82-L83) |
+| `onShow()` | 页面脚本加载完成后调用 | [logic-worker.js:392-394](framework/logic-worker.js#L392-L394) |
+| `onHide()` | 被新页面覆盖时调用（`wx.navigateTo`） | [logic-worker.js:383-385](framework/logic-worker.js#L383-L385) |
+| `onUnload()` | 页面出栈销毁时调用（`wx.navigateBack`） | [logic-worker.js:418-420](framework/logic-worker.js#L418-L420) |
 
 Page 实例属性：
 
 | 属性 | 说明 | 源码位置 |
 |------|------|---------|
-| `data` | 页面初始数据对象 | [logic-worker.js:27](file:///e:/project/mini-program/framework/logic-worker.js#L27) |
-| `setData(data, callback)` | 合并数据并发送完整快照到渲染层，触发视图更新 | [logic-worker.js:28-35](file:///e:/project/mini-program/framework/logic-worker.js#L28-L35) |
-| 自定义函数 | 直接定义在 Page 选项中的函数，自动绑定 `this` 到实例 | [logic-worker.js:39-45](file:///e:/project/mini-program/framework/logic-worker.js#L39-L45) |
-| `methods` | 可选的方法命名空间，其中所有函数也会绑定到实例 | [logic-worker.js:47-54](file:///e:/project/mini-program/framework/logic-worker.js#L47-L54) |
+| `data` | 页面初始数据对象 | [logic-worker.js:27](framework/logic-worker.js#L27) |
+| `setData(data, callback)` | 合并数据并发送完整快照到渲染层，触发视图更新 | [logic-worker.js:28-35](framework/logic-worker.js#L28-L35) |
+| 自定义函数 | 直接定义在 Page 选项中的函数，自动绑定 `this` 到实例 | [logic-worker.js:39-45](framework/logic-worker.js#L39-L45) |
+| `methods` | 可选的方法命名空间，其中所有函数也会绑定到实例 | [logic-worker.js:47-54](framework/logic-worker.js#L47-L54) |
 
 ### app.json 配置
 
-源码消费位置：[main.js:15-30](file:///e:/project/mini-program/main.js#L15-L30)、[container.js:105-109](file:///e:/project/mini-program/container/container.js#L105-L109)
+源码消费位置：[main.js:15-30](main.js#L15-L30)、[container.js:105-109](container/container.js#L105-L109)
 
 ```json
 {
@@ -507,17 +507,17 @@ Page 实例属性：
 
 | 字段 | 类型 | 默认值 | 作用 | 消费位置 |
 |------|------|--------|------|---------|
-| `pages` | `string[]` | — | 页面路由表，第一个元素为启动首页 | [logic-worker.js:410-412](file:///e:/project/mini-program/framework/logic-worker.js#L410-L412) |
-| `window.width` | `number` | `375` | 主窗口宽度 | [main.js:22](file:///e:/project/mini-program/main.js#L22) |
-| `window.height` | `number` | `667` | 主窗口高度 | [main.js:23](file:///e:/project/mini-program/main.js#L23) |
-| `window.navigationBarTitleText` | `string` | `'Mini Program'` | 默认导航栏标题，也用作窗口 title | [main.js:24](file:///e:/project/mini-program/main.js#L24)、[container.js:107](file:///e:/project/mini-program/container/container.js#L107) |
+| `pages` | `string[]` | — | 页面路由表，第一个元素为启动首页 | [logic-worker.js:410-412](framework/logic-worker.js#L410-L412) |
+| `window.width` | `number` | `375` | 主窗口宽度 | [main.js:22](main.js#L22) |
+| `window.height` | `number` | `667` | 主窗口高度 | [main.js:23](main.js#L23) |
+| `window.navigationBarTitleText` | `string` | `'Mini Program'` | 默认导航栏标题，也用作窗口 title | [main.js:24](main.js#L24)、[container.js:107](container/container.js#L107) |
 | `window.navigationBarBackgroundColor` | `string` | — | 预留：导航栏背景色 | 配置已声明，待实现 |
 | `window.navigationBarTextStyle` | `string` | — | 预留：导航栏文字颜色（black/white） | 配置已声明，待实现 |
 | `window.backgroundColor` | `string` | — | 预留：窗口背景色 | 配置已声明，待实现 |
 
 ### 页面 index.json 配置
 
-源码消费位置：[container.js:83-86](file:///e:/project/mini-program/container/container.js#L83-L86)（读取）、[container.js:105-109](file:///e:/project/mini-program/container/container.js#L105-L109)（消费）
+源码消费位置：[container.js:83-86](container/container.js#L83-L86)（读取）、[container.js:105-109](container/container.js#L105-L109)（消费）
 
 ```json
 {
@@ -527,7 +527,7 @@ Page 实例属性：
 
 | 字段 | 类型 | 作用 | 消费位置 |
 |------|------|------|---------|
-| `navigationBarTitleText` | `string` | 当前页面导航栏标题，覆盖 app.json 中的默认值 | [container.js:107](file:///e:/project/mini-program/container/container.js#L107) |
+| `navigationBarTitleText` | `string` | 当前页面导航栏标题，覆盖 app.json 中的默认值 | [container.js:107](container/container.js#L107) |
 
 **配置优先级**：`页面 index.json.navigationBarTitleText` > `app.json.window.navigationBarTitleText` > `''`
 
