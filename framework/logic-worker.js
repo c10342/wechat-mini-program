@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 let appConfig = null;
 let currentPage = null;
@@ -25,21 +25,21 @@ function createPageInstance(pagePath, pageDefine) {
     __define__: pageDefine,
     data: deepClone(pageDefine.data || {}),
     setData: function (newData, callback) {
-      if (typeof newData !== 'object' || !newData) return;
+      if (typeof newData !== "object" || !newData) return;
       Object.assign(instance.data, newData);
-      sendMessage('setData', {
+      sendMessage("setData", {
         path: pagePath,
         data: newData,
         fullData: deepClone(instance.data),
       });
-      if (typeof callback === 'function') callback();
+      if (typeof callback === "function") callback();
     },
   };
 
-  var reservedKeys = ['data', 'methods'];
+  var reservedKeys = ["data", "methods"];
   Object.keys(pageDefine).forEach(function (key) {
     if (reservedKeys.indexOf(key) !== -1) return;
-    if (typeof pageDefine[key] === 'function') {
+    if (typeof pageDefine[key] === "function") {
       instance[key] = function () {
         var args = Array.prototype.slice.call(arguments);
         return pageDefine[key].apply(instance, args);
@@ -49,7 +49,7 @@ function createPageInstance(pagePath, pageDefine) {
 
   if (pageDefine.methods) {
     Object.keys(pageDefine.methods).forEach(function (methodName) {
-      if (typeof pageDefine.methods[methodName] === 'function') {
+      if (typeof pageDefine.methods[methodName] === "function") {
         instance[methodName] = function () {
           var args = Array.prototype.slice.call(arguments);
           return pageDefine.methods[methodName].apply(instance, args);
@@ -65,17 +65,17 @@ self.App = function (options) {
   if (options.globalData) {
     appMethods.globalData = options.globalData;
   }
-  ['onLaunch', 'onShow', 'onHide'].forEach(function (hook) {
-    if (typeof options[hook] === 'function') {
+  ["onLaunch", "onShow", "onHide"].forEach(function (hook) {
+    if (typeof options[hook] === "function") {
       appMethods[hook] = options[hook];
     }
   });
-  console.log('[Worker] App registered');
+  console.log("[Worker] App registered");
 };
 
 self.Page = function (options) {
   if (!currentPage) {
-    console.warn('[Worker] Page called without active page context');
+    console.warn("[Worker] Page called without active page context");
     return;
   }
 
@@ -83,14 +83,24 @@ self.Page = function (options) {
   var instance = createPageInstance(pagePath, options);
   pageInstances[pagePath] = instance;
 
-  console.log('[Worker] Page registered:', pagePath, 'data:', JSON.stringify(instance.data));
-  console.log('[Worker] Page methods:', Object.keys(instance).filter(function (k) { return typeof instance[k] === 'function'; }));
+  console.log(
+    "[Worker] Page registered:",
+    pagePath,
+    "data:",
+    JSON.stringify(instance.data),
+  );
+  console.log(
+    "[Worker] Page methods:",
+    Object.keys(instance).filter(function (k) {
+      return typeof instance[k] === "function";
+    }),
+  );
 
-  if (typeof instance.onLoad === 'function') {
+  if (typeof instance.onLoad === "function") {
     instance.onLoad(pendingQuery || {});
   }
 
-  sendMessage('pageReady', {
+  sendMessage("pageReady", {
     path: pagePath,
     data: deepClone(instance.data),
   });
@@ -99,60 +109,74 @@ self.Page = function (options) {
 self.wx = {
   navigateTo: function (params) {
     var url = params.url;
-    var queryIndex = url.indexOf('?');
+    var queryIndex = url.indexOf("?");
     var cleanUrl = queryIndex >= 0 ? url.substring(0, queryIndex) : url;
-    var queryStr = queryIndex >= 0 ? url.substring(queryIndex + 1) : '';
-    var pagePath = cleanUrl.startsWith('/') ? cleanUrl.slice(1) : cleanUrl;
-    if (pagePath.endsWith('/index')) {
+    var queryStr = queryIndex >= 0 ? url.substring(queryIndex + 1) : "";
+    var pagePath = cleanUrl.startsWith("/") ? cleanUrl.slice(1) : cleanUrl;
+    if (pagePath.endsWith("/index")) {
       pagePath = pagePath.slice(0, -6);
     }
     var query = parseQuery(queryStr);
-    console.log('[Worker] navigateTo:', params.url, '-> pagePath:', pagePath, 'query:', JSON.stringify(query));
-    sendMessage('navigateTo', { path: pagePath });
+    console.log(
+      "[Worker] navigateTo:",
+      params.url,
+      "-> pagePath:",
+      pagePath,
+      "query:",
+      JSON.stringify(query),
+    );
+    sendMessage("navigateTo", { path: pagePath });
     loadPage(pagePath, query);
     if (params.success) params.success();
   },
   navigateBack: function (params) {
-    console.log('[Worker] navigateBack');
-    sendMessage('navigateBack', { delta: params.delta || 1 });
+    console.log("[Worker] navigateBack");
+    sendMessage("navigateBack", { delta: params.delta || 1 });
     if (params.success) params.success();
   },
   redirectTo: function (params) {
     var url = params.url;
-    var queryIndex = url.indexOf('?');
+    var queryIndex = url.indexOf("?");
     var cleanUrl = queryIndex >= 0 ? url.substring(0, queryIndex) : url;
-    var queryStr = queryIndex >= 0 ? url.substring(queryIndex + 1) : '';
-    var pagePath = cleanUrl.startsWith('/') ? cleanUrl.slice(1) : cleanUrl;
-    if (pagePath.endsWith('/index')) {
+    var queryStr = queryIndex >= 0 ? url.substring(queryIndex + 1) : "";
+    var pagePath = cleanUrl.startsWith("/") ? cleanUrl.slice(1) : cleanUrl;
+    if (pagePath.endsWith("/index")) {
       pagePath = pagePath.slice(0, -6);
     }
     var query = parseQuery(queryStr);
-    console.log('[Worker] redirectTo:', params.url, '-> pagePath:', pagePath, 'query:', JSON.stringify(query));
-    sendMessage('redirectTo', { path: pagePath });
+    console.log(
+      "[Worker] redirectTo:",
+      params.url,
+      "-> pagePath:",
+      pagePath,
+      "query:",
+      JSON.stringify(query),
+    );
+    sendMessage("redirectTo", { path: pagePath });
     loadPage(pagePath, query);
     if (params.success) params.success();
   },
   getSystemInfoSync: function () {
     return {
-      brand: 'MiniProgram',
-      model: 'Electron',
+      brand: "MiniProgram",
+      model: "Electron",
       pixelRatio: 1,
       screenWidth: 375,
       screenHeight: 667,
       windowWidth: 375,
       windowHeight: 667,
-      platform: 'devtools',
+      platform: "devtools",
     };
   },
   showToast: function (params) {
-    sendMessage('showToast', params);
+    sendMessage("showToast", params);
   },
   showNotification: function (params) {
-    sendMessage('showNotification', {
-      title: params.title || '',
-      body: params.body || '',
-      icon: params.icon || '',
-      tag: params.tag || '',
+    sendMessage("showNotification", {
+      title: params.title || "",
+      body: params.body || "",
+      icon: params.icon || "",
+      tag: params.tag || "",
     });
     if (params.success) params.success();
   },
@@ -163,9 +187,9 @@ self.wx = {
       success: params.success || null,
       fail: params.fail || null,
     };
-    sendMessage('chooseFile', {
+    sendMessage("chooseFile", {
       id: id,
-      title: params.title || 'Select File',
+      title: params.title || "Select File",
       filters: params.filters || [],
       multiple: params.multiple || false,
     });
@@ -187,29 +211,29 @@ function requestFile(relativePath) {
   return new Promise(function (resolve) {
     var id = ++requestIdCounter;
     pendingFileRequests[id] = resolve;
-    sendMessage('readFile', { id: id, path: relativePath });
+    sendMessage("readFile", { id: id, path: relativePath });
   });
 }
 
 var moduleCache = {};
 
 function resolvePath(fromPath, requirePath) {
-  if (requirePath.startsWith('/')) {
+  if (requirePath.startsWith("/")) {
     var resolved = requirePath.slice(1);
   } else {
-    var parts = fromPath.split('/');
+    var parts = fromPath.split("/");
     parts.pop();
-    requirePath.split('/').forEach(function (seg) {
-      if (seg === '..') {
+    requirePath.split("/").forEach(function (seg) {
+      if (seg === "..") {
         parts.pop();
-      } else if (seg !== '.') {
+      } else if (seg !== ".") {
         parts.push(seg);
       }
     });
-    var resolved = parts.join('/');
+    var resolved = parts.join("/");
   }
-  if (!resolved.endsWith('.js')) {
-    resolved += '.js';
+  if (!resolved.endsWith(".js")) {
+    resolved += ".js";
   }
   return resolved;
 }
@@ -229,30 +253,26 @@ function createRequire(fromPath) {
     var requestId = ++requestIdCounter;
     var fulfilled = false;
 
-    sendMessage('readFile', { id: requestId, path: resolvedPath });
+    sendMessage("readFile", { id: requestId, path: resolvedPath });
 
     var listener = function (e) {
       var msg = e.data;
-      if (msg.type === 'fileResponse' && msg.data.id === requestId) {
-        self.removeEventListener('message', listener);
+      if (msg.type === "fileResponse" && msg.data.id === requestId) {
+        self.removeEventListener("message", listener);
         result = msg.data.result;
         fulfilled = true;
       }
     };
-    self.addEventListener('message', listener);
-
-    var spin = function () {
-      var done = false;
-      var start = Date.now();
-      while (!done && Date.now() - start < 5000) {
-        // busy wait
-      }
-    };
+    self.addEventListener("message", listener);
 
     throw new Error(
-      '[Worker] require("' + requirePath + '") from "' + fromPath + '" failed: ' +
-      'synchronous require is not supported in async Worker. ' +
-      'Use loadModuleAsync instead.'
+      '[Worker] require("' +
+        requirePath +
+        '") from "' +
+        fromPath +
+        '" failed: ' +
+        "synchronous require is not supported in async Worker. " +
+        "Use loadModuleAsync instead.",
     );
   };
 }
@@ -264,7 +284,7 @@ async function loadModuleAsync(modulePath) {
 
   var result = await requestFile(modulePath);
   if (!result.success) {
-    console.error('[Worker] Failed to load module:', modulePath, result.error);
+    console.error("[Worker] Failed to load module:", modulePath, result.error);
     return {};
   }
 
@@ -276,12 +296,12 @@ async function loadModuleAsync(modulePath) {
   var localRequire = createRequire(modulePath);
 
   try {
-    var fn = new Function('require', 'module', 'exports', result.content);
+    var fn = new Function("require", "module", "exports", result.content);
     fn(localRequire, moduleRef, moduleExports);
     mod.exports = moduleRef.exports;
     mod.loaded = true;
   } catch (err) {
-    console.error('[Worker] Module execution error (' + modulePath + '):', err);
+    console.error("[Worker] Module execution error (" + modulePath + "):", err);
     mod.exports = {};
   }
 
@@ -291,7 +311,6 @@ async function loadModuleAsync(modulePath) {
 function executeScriptWithRequire(code, fromPath) {
   var moduleExports = {};
   var moduleRef = { exports: moduleExports };
-  var localRequire = createRequire(fromPath);
 
   var pendingRequires = [];
   var syncRequire = function (p) {
@@ -304,10 +323,10 @@ function executeScriptWithRequire(code, fromPath) {
   };
 
   try {
-    var fn = new Function('require', 'module', 'exports', code);
+    var fn = new Function("require", "module", "exports", code);
     fn(syncRequire, moduleRef, moduleExports);
   } catch (err) {
-    console.error('[Worker] Script execution error:', err);
+    console.error("[Worker] Script execution error:", err);
     return;
   }
 
@@ -315,7 +334,8 @@ function executeScriptWithRequire(code, fromPath) {
 }
 
 async function preloadModules(code, fromPath) {
-  var requireRegex = /(?:const|let|var)\s+\w+\s*=\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+  var requireRegex =
+    /(?:const|let|var)\s+\w+\s*=\s*require\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
   var match;
   var modules = [];
 
@@ -332,23 +352,23 @@ async function preloadModules(code, fromPath) {
 function executeScript(code, fromPath) {
   var moduleExports = {};
   var moduleRef = { exports: moduleExports };
-  var localRequire = createRequire(fromPath || '');
+  var localRequire = createRequire(fromPath || "");
 
   try {
-    var fn = new Function('require', 'module', 'exports', code);
+    var fn = new Function("require", "module", "exports", code);
     fn(localRequire, moduleRef, moduleExports);
   } catch (err) {
-    console.error('[Worker] Script execution error:', err);
+    console.error("[Worker] Script execution error:", err);
   }
 }
 
 function parseQuery(queryStr) {
   var query = {};
   if (!queryStr) return query;
-  queryStr.split('&').forEach(function (pair) {
-    var parts = pair.split('=');
+  queryStr.split("&").forEach(function (pair) {
+    var parts = pair.split("=");
     var key = decodeURIComponent(parts[0]);
-    var value = parts.length > 1 ? decodeURIComponent(parts[1]) : '';
+    var value = parts.length > 1 ? decodeURIComponent(parts[1]) : "";
     query[key] = value;
   });
   return query;
@@ -357,20 +377,24 @@ function parseQuery(queryStr) {
 var pendingQuery = null;
 
 async function loadPageScript(pagePath) {
-  var scriptPath = pagePath + '/index.js';
+  var scriptPath = pagePath + "/index.js";
   var result = await requestFile(scriptPath);
   if (result.success) {
     currentPage = pagePath;
     await preloadModules(result.content, scriptPath);
     executeScript(result.content, scriptPath);
   } else {
-    console.error('[Worker] Failed to load page script:', pagePath, result.error);
+    console.error(
+      "[Worker] Failed to load page script:",
+      pagePath,
+      result.error,
+    );
   }
 }
 
 async function loadPage(pagePath, query) {
   if (pageInstances[pagePath]) {
-    if (typeof pageInstances[pagePath].onHide === 'function') {
+    if (typeof pageInstances[pagePath].onHide === "function") {
       pageInstances[pagePath].onHide();
     }
   }
@@ -379,30 +403,30 @@ async function loadPage(pagePath, query) {
   await loadPageScript(pagePath);
   pendingQuery = null;
 
-  if (pageInstances[pagePath] && typeof pageInstances[pagePath].onShow === 'function') {
+  if (
+    pageInstances[pagePath] &&
+    typeof pageInstances[pagePath].onShow === "function"
+  ) {
     pageInstances[pagePath].onShow();
   }
 }
 
 async function loadAppScript() {
-  var result = await requestFile('app.js');
+  var result = await requestFile("app.js");
   if (result.success) {
     executeScript(result.content);
   }
 }
 
-self.onmessage = async function (e) {
-  var msg = e.data;
-  var type = msg.type;
-  var data = msg.data;
-
-  if (type === 'init') {
+var messageHandlers = {
+  init: async (msg) => {
+    var data = msg.data;
     appConfig = data.config;
-    console.log('[Worker] Config loaded:', JSON.stringify(appConfig));
+    console.log("[Worker] Config loaded:", JSON.stringify(appConfig));
 
     await loadAppScript();
 
-    if (typeof appMethods.onLaunch === 'function') {
+    if (typeof appMethods.onLaunch === "function") {
       appMethods.onLaunch();
     }
 
@@ -410,68 +434,91 @@ self.onmessage = async function (e) {
     if (firstPage) {
       loadPage(firstPage);
     }
-  }
-
-  if (type === 'event') {
+  },
+  event: async (msg) => {
+    var data = msg.data;
     var pagePath = data.pagePath;
     var eventName = data.eventName;
     var eventPayload = data.eventPayload;
-    console.log('[Worker] Event received:', eventName, 'on page:', pagePath);
+    console.log("[Worker] Event received:", eventName, "on page:", pagePath);
 
     var instance = pageInstances[pagePath];
     if (!instance) {
-      console.warn('[Worker] No page instance for event:', pagePath, 'available:', Object.keys(pageInstances));
+      console.warn(
+        "[Worker] No page instance for event:",
+        pagePath,
+        "available:",
+        Object.keys(pageInstances),
+      );
       return;
     }
 
     var handler = instance[eventName];
-    if (typeof handler === 'function') {
+    if (typeof handler === "function") {
       handler.call(instance, eventPayload || {});
     } else {
-      console.warn('[Worker] No handler for event:', eventName, 'on page:', pagePath);
+      console.warn(
+        "[Worker] No handler for event:",
+        eventName,
+        "on page:",
+        pagePath,
+      );
     }
-  }
-
-  if (type === 'loadPage') {
+  },
+  loadPage: async (msg) => {
+    var data = msg.data;
     loadPage(data.path);
-  }
-
-  if (type === 'notifyPageHide') {
+  },
+  notifyPageHide: async (msg) => {
+    var data = msg.data;
     var hidePath = data.path;
     if (pageInstances[hidePath]) {
-      if (typeof pageInstances[hidePath].onUnload === 'function') {
+      if (typeof pageInstances[hidePath].onUnload === "function") {
         pageInstances[hidePath].onUnload();
       }
       delete pageInstances[hidePath];
-      console.log('[Worker] Page destroyed:', hidePath);
+      console.log("[Worker] Page destroyed:", hidePath);
     }
-  }
-
-  if (type === 'notifyPageShow') {
+  },
+  notifyPageShow: async (msg) => {
+    var data = msg.data;
     var showPath = data.path;
-    if (pageInstances[showPath] && typeof pageInstances[showPath].onShow === 'function') {
+    if (
+      pageInstances[showPath] &&
+      typeof pageInstances[showPath].onShow === "function"
+    ) {
       pageInstances[showPath].onShow();
     }
-  }
-
-  if (type === 'fileResponse') {
+  },
+  fileResponse: async (msg) => {
+    var data = msg.data;
     var id = data.id;
     if (pendingFileRequests[id]) {
       pendingFileRequests[id](data.result);
       delete pendingFileRequests[id];
     }
-  }
-
-  if (type === 'chooseFileResponse') {
+  },
+  chooseFileResponse: async (msg) => {
+    var data = msg.data;
     var respId = data.id;
     var cb = pendingChooseFileCallbacks[respId];
     if (cb) {
       if (data.cancelled) {
-        if (cb.fail) cb.fail({ errMsg: 'cancelled' });
+        if (cb.fail) cb.fail({ errMsg: "cancelled" });
       } else {
         if (cb.success) cb.success({ filePaths: data.filePaths });
       }
       delete pendingChooseFileCallbacks[respId];
     }
+  },
+};
+
+self.onmessage = async function (e) {
+  var msg = e.data;
+  var type = msg.type;
+  if (messageHandlers[type]) {
+    await messageHandlers[type](msg);
+  } else {
+    console.warn("[Worker] Unknown message type:", type);
   }
 };
