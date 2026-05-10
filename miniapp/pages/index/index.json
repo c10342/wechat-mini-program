@@ -2,6 +2,6 @@
   "navigationBarTitleText": "Home",
   "usingComponents": {
     "page-header": "/components/page-header",
-    "counter": "/components/counter"
+    "my-counter": "/components/counter"
   }
 }

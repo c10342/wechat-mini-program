@@ -1,7 +1,7 @@
 <view class="container">
-  <page-header class="width-full" title="{{motto}}" subtitle="{{subtitle}}" />
+  <page-header title="{{motto}}" subtitle="{{subtitle}}" />
 
-  <counter  class="width-full" count="{{count}}" label="current count" bind:increment="onIncrement" bind:decrement="onDecrement" bind:reset="onReset" />
+  <my-counter count="{{count}}" label="current count" bind:increment="onIncrement" bind:decrement="onDecrement" bind:reset="onReset" />
 
   <view class="card">
     <text class="card-title">System Info</text>

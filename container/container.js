@@ -10,6 +10,7 @@ const pageDataCache = {};
 const pageComponentEventMaps = {};
 const componentTemplateCache = {};
 const componentStyleCache = {};
+const elementNameToCompName = {};
 let globalAppStyle = "";
 
 const NAV_HEIGHT = 44;
@@ -97,7 +98,7 @@ function evaluateCondition(condition, data) {
 
 function processWxFor(tpl, data) {
   var output = tpl;
-  output = output.replace(/<(\w+)([^>]*)\swx:for="([^"]*)"(?:\s+wx:for-item="([^"]*)")?(?:\s+wx:for-index="([^"]*)")?([^>]*)>([\s\S]*?)<\/\1>/g, function (match, tag, before, listExpr, itemName, indexName, after, content) {
+  output = output.replace(/<(\w+[\w-]*)([^>]*)\swx:for="([^"]*)"(?:\s+wx:for-item="([^"]*)")?(?:\s+wx:for-index="([^"]*)")?([^>]*)>([\s\S]*?)<\/\1>/g, function (match, tag, before, listExpr, itemName, indexName, after, content) {
     var expr = listExpr.trim();
     if (expr.startsWith("{{") && expr.endsWith("}}")) {
       expr = expr.slice(2, -2).trim();
@@ -127,7 +128,7 @@ function processWxIf(tpl, data) {
   var changed = true;
   while (changed) {
     changed = false;
-    var ifRegex = /<(\w+)([^>]*)\swx:if="([^"]*)"([^>]*)>([\s\S]*?)<\/\1>/;
+    var ifRegex = /<(\w+[\w-]*)([^>]*)\swx:if="([^"]*)"([^>]*)>([\s\S]*?)<\/\1>/;
     var match = ifRegex.exec(output);
     if (!match) break;
 
@@ -141,7 +142,7 @@ function processWxIf(tpl, data) {
     var remaining = output.substring(chainEnd);
 
     var elifRegex = new RegExp(
-      "^\\s*<" + tag + "([^>]*)\\s+wx:elif=\"([^\"]*)\"([^>]*)>([\\s\\S]*?)<\\/" + tag + ">"
+      "^\\s*<" + tag.replace(/-/g, "\\-") + "([^>]*)\\s+wx:elif=\"([^\"]*)\"([^>]*)>([\\s\\S]*?)<" + tag.replace(/-/g, "\\-") + ">"
     );
     while (true) {
       var elifMatch = remaining.match(elifRegex);
@@ -157,7 +158,7 @@ function processWxIf(tpl, data) {
     }
 
     var elseRegex = new RegExp(
-      "^\\s*<" + tag + "([^>]*)\\s+wx:else([^>]*)>([\\s\\S]*?)<\\/" + tag + ">"
+      "^\\s*<" + tag.replace(/-/g, "\\-") + "([^>]*)\\s+wx:else([^>]*)>([\\s\\S]*?)<" + tag.replace(/-/g, "\\-") + ">"
     );
     var elseMatch = remaining.match(elseRegex);
     if (elseMatch) {
@@ -242,116 +243,24 @@ async function loadComponentTemplates(pagePath) {
   }
 }
 
-function resolveComponentTags(html, data, componentEventMap) {
+function buildComponentDefs(componentEventMap) {
   if (!componentEventMap || Object.keys(componentEventMap).length === 0) {
-    return html;
+    return {};
   }
-
-  var output = html;
-
+  var defs = {};
   Object.keys(componentEventMap).forEach(function (compName) {
     var compInfo = componentEventMap[compName];
-    var compPath = compInfo.path;
-    var compTpl = componentTemplateCache[compPath];
-    if (!compTpl) return;
-
-    var compData = data["__comp_" + compName] || {};
-
-    var compHtml = renderTemplate(compTpl, compData);
-
-    var selfClosingRegex = new RegExp("<" + compName + "\\s([^>]*)/>", "g");
-    var openCloseRegex = new RegExp("<" + compName + "\\s([^>]*)>([\\s\\S]*?)</" + compName + ">", "g");
-    var bareTagRegex = new RegExp("<" + compName + "\\s?/>", "g");
-
-    output = output.replace(selfClosingRegex, function (match, attrs) {
-      var parsedAttrs = parseComponentAttrs(attrs);
-      var mergedData = deepClone(compData);
-      Object.keys(parsedAttrs).forEach(function (key) {
-        if (mergedData.hasOwnProperty(key)) {
-          mergedData[key] = resolveAttrValue(parsedAttrs[key], data);
-        }
-      });
-      var extraClass = parsedAttrs["class"] ? " " + parsedAttrs["class"] : "";
-      return '<div class="comp-' + compName + extraClass + '" data-comp-name="' + compName + '">' +
-        renderTemplate(compTpl, mergedData) +
-        '</div>';
-    });
-
-    output = output.replace(openCloseRegex, function (match, attrs, slotContent) {
-      var parsedAttrs = parseComponentAttrs(attrs);
-      var mergedData = deepClone(compData);
-      Object.keys(parsedAttrs).forEach(function (key) {
-        if (mergedData.hasOwnProperty(key)) {
-          mergedData[key] = resolveAttrValue(parsedAttrs[key], data);
-        }
-      });
-      var extraClass = parsedAttrs["class"] ? " " + parsedAttrs["class"] : "";
-      return '<div class="comp-' + compName + extraClass + '" data-comp-name="' + compName + '">' +
-        renderTemplate(compTpl, mergedData) +
-        '</div>';
-    });
-
-    output = output.replace(bareTagRegex, function () {
-      return '<div class="comp-' + compName + '" data-comp-name="' + compName + '">' +
-        renderTemplate(compTpl, compData) +
-        '</div>';
-    });
-  });
-
-  return output;
-}
-
-function parseComponentAttrs(attrStr) {
-  var attrs = {};
-  if (!attrStr) return attrs;
-  var regex = /(\w[\w-]*)\s*=\s*"([^"]*)"/g;
-  var match;
-  while ((match = regex.exec(attrStr)) !== null) {
-    attrs[match[1]] = match[2];
-  }
-  return attrs;
-}
-
-function resolveAttrValue(attrVal, pageData) {
-  if (attrVal.startsWith("{{") && attrVal.endsWith("}}")) {
-    var expr = attrVal.slice(2, -2).trim();
-    var keys = expr.split(".");
-    var value = pageData;
-    for (var i = 0; i < keys.length; i++) {
-      if (value == null) return attrVal;
-      value = value[keys[i]];
+    defs[compName] = {
+      template: componentTemplateCache[compInfo.path] || "",
+      style: componentStyleCache[compInfo.path] || "",
+    };
+    var elementName = compName;
+    if (!elementName.includes("-")) {
+      elementName = "mp-" + elementName;
     }
-    return value != null ? value : attrVal;
-  }
-  return attrVal;
-}
-
-function collectComponentStyles(componentEventMap) {
-  if (!componentEventMap) return "";
-  var styles = "";
-  Object.keys(componentEventMap).forEach(function (compName) {
-    var compInfo = componentEventMap[compName];
-    var compStyle = componentStyleCache[compInfo.path];
-    if (compStyle) {
-      var scopedCss = scopeCss(compStyle, ".comp-" + compName);
-      styles += scopedCss + "\n";
-    }
+    elementNameToCompName[elementName] = compName;
   });
-  return styles;
-}
-
-function scopeCss(css, scopeSelector) {
-  var output = css;
-  output = convertWxssSelectors(output);
-  output = output.replace(/([^{}]+)\{/g, function (match, selectors) {
-    var scopedSelectors = selectors.split(",").map(function (sel) {
-      sel = sel.trim();
-      if (!sel) return sel;
-      return scopeSelector + " " + sel;
-    }).join(", ");
-    return scopedSelectors + " {";
-  });
-  return output;
+  return defs;
 }
 
 function getBounds(offsetX) {
@@ -391,7 +300,6 @@ async function renderPageInView(viewId, pagePath, data, componentEventMap) {
   var html = "";
   if (tplResult.success) {
     html = renderTemplate(tplResult.content, data);
-    html = resolveComponentTags(html, data, componentEventMap);
   }
 
   var style = "";
@@ -399,13 +307,22 @@ async function renderPageInView(viewId, pagePath, data, componentEventMap) {
     style = convertWxssSelectors(styleResult.content);
   }
 
-  var compStyles = collectComponentStyles(componentEventMap);
-  style = compStyles + style;
+  var componentDefs = buildComponentDefs(componentEventMap);
+  var compDataMap = {};
+  Object.keys(componentDefs).forEach(function (compName) {
+    compDataMap[compName] = data["__comp_" + compName] || {};
+  });
 
   ipcRenderer.send("send-to-page-view", {
     viewId,
     channel: "render",
-    data: { html, style, globalStyle: globalAppStyle },
+    data: {
+      html: html,
+      style: style,
+      globalStyle: globalAppStyle,
+      componentDefs: componentDefs,
+      compDataMap: compDataMap,
+    },
   });
 
   return pageConfig;
@@ -461,25 +378,19 @@ function animateSlideIn(newPage, oldPage, pageConfig) {
   var screenWidth = window.innerWidth;
 
   setViewBounds(newPage, getBounds(screenWidth));
-
   showPage(newPage);
-
   if (oldPage) {
     showPage(oldPage);
   }
 
   var startTime = null;
-
   function step(timestamp) {
     if (!startTime) startTime = timestamp;
     var elapsed = timestamp - startTime;
     var progress = Math.min(elapsed / ANIM_DURATION, 1);
-
     var eased = 1 - Math.pow(1 - progress, 3);
     var offset = screenWidth * (1 - eased);
-
     setViewBounds(newPage, getBounds(offset));
-
     if (progress < 1) {
       requestAnimationFrame(step);
     } else {
@@ -487,30 +398,24 @@ function animateSlideIn(newPage, oldPage, pageConfig) {
       updateNavBar(pageConfig);
     }
   }
-
   requestAnimationFrame(step);
 }
 
 function animateSlideOut(topPage, bottomPage, callback) {
   var screenWidth = window.innerWidth;
-
   showPage(topPage);
   if (bottomPage) {
     showPage(bottomPage);
   }
 
   var startTime = null;
-
   function step(timestamp) {
     if (!startTime) startTime = timestamp;
     var elapsed = timestamp - startTime;
     var progress = Math.min(elapsed / ANIM_DURATION, 1);
-
     var eased = 1 - Math.pow(1 - progress, 3);
     var offset = screenWidth * eased;
-
     setViewBounds(topPage, getBounds(offset));
-
     if (progress < 1) {
       requestAnimationFrame(step);
     } else {
@@ -522,7 +427,6 @@ function animateSlideOut(topPage, bottomPage, callback) {
       if (callback) callback();
     }
   }
-
   requestAnimationFrame(step);
 }
 
@@ -577,7 +481,7 @@ ipcRenderer.onPageViewEvent(function (msg) {
 
   var compName = null;
   if (eventPayload && eventPayload.target && eventPayload.target.dataset && eventPayload.target.dataset.compName) {
-    compName = eventPayload.target.dataset.compName;
+    compName = elementNameToCompName[eventPayload.target.dataset.compName] || eventPayload.target.dataset.compName;
   }
 
   console.log("[Container] Event from view:", eventName, "page:", currentPath, "component:", compName || "page");
@@ -653,7 +557,6 @@ var messageHandlers = {
   },
   setData: async (msg) => {
     var data = msg.data;
-
     var pagePath = data.path;
     var fullData = data.fullData;
 
@@ -667,14 +570,11 @@ var messageHandlers = {
     }
   },
   navigateTo: async (msg) => {
-    var data = msg.data;
-
-    navigatingTo = data.path;
-    console.log("[Container] navigateTo:", data.path);
+    navigatingTo = msg.data.path;
+    console.log("[Container] navigateTo:", msg.data.path);
   },
   navigateBack: async (msg) => {
-    var data = msg.data;
-    handleNavigateBack(data.delta);
+    handleNavigateBack(msg.data.delta);
   },
   showToast: (msg) => {
     var data = msg.data;
