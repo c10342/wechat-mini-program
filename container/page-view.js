@@ -250,6 +250,19 @@
         });
       });
 
+      html = html.replace(/<(\w+[\w-]*)(\s[^>]*)?\/>/g, function (match, tagName) {
+        if (componentDefs[tagName]) return match;
+        console.warn('[PageView] Unknown component tag removed:', tagName);
+        return '';
+      });
+
+      html = html.replace(/<(\w+[\w-]*)(\s[^>]*)?>([\s\S]*?)<\/\1>/g, function (match, tagName) {
+        if (componentDefs[tagName]) return match;
+        if (['div', 'span', 'img', 'a', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'section', 'header', 'footer', 'main', 'nav', 'article', 'style', 'script'].indexOf(tagName) !== -1) return match;
+        console.warn('[PageView] Unknown component open-close tag removed:', tagName);
+        return '';
+      });
+
       pageRoot.innerHTML = html;
 
       bindPageEvents(pageRoot);
