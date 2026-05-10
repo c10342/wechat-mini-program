@@ -7,6 +7,9 @@ let worker = null;
 const pageStack = [];
 const pageViewIds = {};
 const pageDataCache = {};
+const pageComponentEventMaps = {};
+const componentTemplateCache = {};
+const componentStyleCache = {};
 let globalAppStyle = "";
 
 const NAV_HEIGHT = 44;
@@ -38,23 +41,197 @@ function convertWxmlTags(html) {
   return temp;
 }
 
+function resolveExpr(expr, data) {
+  try {
+    var keys = expr.trim().split(".");
+    var value = data;
+    for (var i = 0; i < keys.length; i++) {
+      if (value == null) return null;
+      value = value[keys[i]];
+    }
+    return value;
+  } catch (e) {
+    return null;
+  }
+}
+
+function evaluateCondition(condition, data) {
+  var expr = condition.trim();
+  if (expr.startsWith("{{") && expr.endsWith("}}")) {
+    expr = expr.slice(2, -2).trim();
+  }
+  var val = resolveExpr(expr, data);
+  return !!val;
+}
+
+function processWxDirectives(tpl, data) {
+  var output = tpl;
+  output = output.replace(/<(\w+)([^>]*)\swx:if="([^"]*)"([^>]*)>([\s\S]*?)<\/\1>/g, function (match, tag, before, condition, after, content) {
+    if (evaluateCondition(condition, data)) {
+      return "<" + tag + before + after + ">" + content + "</" + tag + ">";
+    }
+    return "";
+  });
+  return output;
+}
+
 function renderTemplate(tpl, data) {
   if (!tpl || !data) return "";
   var output = tpl;
+  output = processWxDirectives(output, data);
   output = output.replace(/\{\{(.*?)\}\}/g, function (match, expr) {
-    try {
-      var keys = expr.trim().split(".");
-      var value = data;
-      for (var i = 0; i < keys.length; i++) {
-        if (value == null) return "";
-        value = value[keys[i]];
-      }
-      return value != null ? String(value) : "";
-    } catch (e) {
-      return "";
-    }
+    var value = resolveExpr(expr, data);
+    return value != null ? String(value) : "";
   });
   return convertWxmlTags(output);
+}
+
+async function loadComponentTemplates(pagePath) {
+  var configPath = pagePath + "/index.json";
+  var result = await ipcRenderer.invoke("read-file", configPath);
+  if (!result.success) return;
+
+  var pageConfig;
+  try {
+    pageConfig = JSON.parse(result.content);
+  } catch (e) {
+    return;
+  }
+
+  var usingComponents = pageConfig.usingComponents;
+  if (!usingComponents || typeof usingComponents !== "object") return;
+
+  var compNames = Object.keys(usingComponents);
+  for (var i = 0; i < compNames.length; i++) {
+    var compName = compNames[i];
+    var compPath = usingComponents[compName];
+    if (compPath.startsWith("/")) {
+      compPath = compPath.slice(1);
+    }
+
+    if (componentTemplateCache[compPath]) continue;
+
+    var tplPath = compPath + "/index.wxml";
+    var stylePath = compPath + "/index.wxss";
+
+    var [tplResult, styleResult] = await Promise.all([
+      ipcRenderer.invoke("read-file", tplPath),
+      ipcRenderer.invoke("read-file", stylePath),
+    ]);
+
+    componentTemplateCache[compPath] = tplResult.success ? tplResult.content : "";
+    componentStyleCache[compPath] = styleResult.success ? styleResult.content : "";
+  }
+}
+
+function resolveComponentTags(html, data, componentEventMap) {
+  if (!componentEventMap || Object.keys(componentEventMap).length === 0) {
+    return html;
+  }
+
+  var output = html;
+
+  Object.keys(componentEventMap).forEach(function (compName) {
+    var compInfo = componentEventMap[compName];
+    var compPath = compInfo.path;
+    var compTpl = componentTemplateCache[compPath];
+    if (!compTpl) return;
+
+    var compData = data["__comp_" + compName] || {};
+
+    var compHtml = renderTemplate(compTpl, compData);
+
+    var selfClosingRegex = new RegExp("<" + compName + "\\s([^>]*)/>", "g");
+    var openCloseRegex = new RegExp("<" + compName + "\\s([^>]*)>([\\s\\S]*?)</" + compName + ">", "g");
+    var bareTagRegex = new RegExp("<" + compName + "\\s?/>", "g");
+
+    output = output.replace(selfClosingRegex, function (match, attrs) {
+      var parsedAttrs = parseComponentAttrs(attrs);
+      var mergedData = deepClone(compData);
+      Object.keys(parsedAttrs).forEach(function (key) {
+        if (mergedData.hasOwnProperty(key)) {
+          mergedData[key] = resolveAttrValue(parsedAttrs[key], data);
+        }
+      });
+      return '<div class="comp-' + compName + '" data-comp-name="' + compName + '">' +
+        renderTemplate(compTpl, mergedData) +
+        '</div>';
+    });
+
+    output = output.replace(openCloseRegex, function (match, attrs, slotContent) {
+      var parsedAttrs = parseComponentAttrs(attrs);
+      var mergedData = deepClone(compData);
+      Object.keys(parsedAttrs).forEach(function (key) {
+        if (mergedData.hasOwnProperty(key)) {
+          mergedData[key] = resolveAttrValue(parsedAttrs[key], data);
+        }
+      });
+      return '<div class="comp-' + compName + '" data-comp-name="' + compName + '">' +
+        renderTemplate(compTpl, mergedData) +
+        '</div>';
+    });
+
+    output = output.replace(bareTagRegex, function () {
+      return '<div class="comp-' + compName + '" data-comp-name="' + compName + '">' +
+        renderTemplate(compTpl, compData) +
+        '</div>';
+    });
+  });
+
+  return output;
+}
+
+function parseComponentAttrs(attrStr) {
+  var attrs = {};
+  if (!attrStr) return attrs;
+  var regex = /(\w[\w-]*)\s*=\s*"([^"]*)"/g;
+  var match;
+  while ((match = regex.exec(attrStr)) !== null) {
+    attrs[match[1]] = match[2];
+  }
+  return attrs;
+}
+
+function resolveAttrValue(attrVal, pageData) {
+  if (attrVal.startsWith("{{") && attrVal.endsWith("}}")) {
+    var expr = attrVal.slice(2, -2).trim();
+    var keys = expr.split(".");
+    var value = pageData;
+    for (var i = 0; i < keys.length; i++) {
+      if (value == null) return attrVal;
+      value = value[keys[i]];
+    }
+    return value != null ? value : attrVal;
+  }
+  return attrVal;
+}
+
+function collectComponentStyles(componentEventMap) {
+  if (!componentEventMap) return "";
+  var styles = "";
+  Object.keys(componentEventMap).forEach(function (compName) {
+    var compInfo = componentEventMap[compName];
+    var compStyle = componentStyleCache[compInfo.path];
+    if (compStyle) {
+      var scopedCss = scopeCss(compStyle, ".comp-" + compName);
+      styles += scopedCss + "\n";
+    }
+  });
+  return styles;
+}
+
+function scopeCss(css, scopeSelector) {
+  var output = css;
+  output = convertWxssSelectors(output);
+  output = output.replace(/([^{}]+)\{/g, function (match, selectors) {
+    var scopedSelectors = selectors.split(",").map(function (sel) {
+      sel = sel.trim();
+      if (!sel) return sel;
+      return scopeSelector + " " + sel;
+    }).join(", ");
+    return scopedSelectors + " {";
+  });
+  return output;
 }
 
 function getBounds(offsetX) {
@@ -73,7 +250,7 @@ async function createPageView(pagePath) {
   return viewId;
 }
 
-async function renderPageInView(viewId, pagePath, data) {
+async function renderPageInView(viewId, pagePath, data, componentEventMap) {
   var tplPath = pagePath + "/index.wxml";
   var stylePath = pagePath + "/index.wxss";
   var configPath = pagePath + "/index.json";
@@ -94,12 +271,16 @@ async function renderPageInView(viewId, pagePath, data) {
   var html = "";
   if (tplResult.success) {
     html = renderTemplate(tplResult.content, data);
+    html = resolveComponentTags(html, data, componentEventMap);
   }
 
   var style = "";
   if (styleResult.success) {
     style = convertWxssSelectors(styleResult.content);
   }
+
+  var compStyles = collectComponentStyles(componentEventMap);
+  style = compStyles + style;
 
   ipcRenderer.send("send-to-page-view", {
     viewId,
@@ -152,6 +333,7 @@ function destroyPage(pagePath) {
     ipcRenderer.send("destroy-page-view", { viewId });
     delete pageViewIds[pagePath];
     delete pageDataCache[pagePath];
+    delete pageComponentEventMaps[pagePath];
   }
 }
 
@@ -273,13 +455,20 @@ ipcRenderer.onPageViewEvent(function (msg) {
   var currentPath = pageStack[pageStack.length - 1];
   if (!currentPath) return;
 
-  console.log("[Container] Event from view:", eventName, "page:", currentPath);
+  var compName = null;
+  if (eventPayload && eventPayload.target && eventPayload.target.dataset && eventPayload.target.dataset.compName) {
+    compName = eventPayload.target.dataset.compName;
+  }
+
+  console.log("[Container] Event from view:", eventName, "page:", currentPath, "component:", compName || "page");
+
   worker.postMessage({
     type: "event",
     data: {
       pagePath: currentPath,
       eventName: eventName,
       eventPayload: eventPayload,
+      compName: compName,
     },
   });
 });
@@ -304,8 +493,12 @@ var messageHandlers = {
     var data = msg.data;
     var pagePath = data.path;
     var pageData = data.data;
+    var componentEventMap = data.componentEventMap || {};
 
     pageDataCache[pagePath] = deepClone(pageData);
+    pageComponentEventMaps[pagePath] = componentEventMap;
+
+    await loadComponentTemplates(pagePath);
 
     var viewId = await createPageView(pagePath);
 
@@ -315,7 +508,7 @@ var messageHandlers = {
     });
     ipcRenderer.send("hide-page-view", { viewId });
 
-    var pageConfig = await renderPageInView(viewId, pagePath, pageData);
+    var pageConfig = await renderPageInView(viewId, pagePath, pageData, componentEventMap);
 
     var isNavigateTo = navigatingTo === pagePath;
     navigatingTo = null;
@@ -348,7 +541,8 @@ var messageHandlers = {
 
     var viewId = pageViewIds[pagePath];
     if (viewId) {
-      await renderPageInView(viewId, pagePath, fullData);
+      var componentEventMap = pageComponentEventMaps[pagePath] || {};
+      await renderPageInView(viewId, pagePath, fullData, componentEventMap);
       console.log("[Container] Data updated:", pagePath);
     }
   },

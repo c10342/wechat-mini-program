@@ -3,6 +3,9 @@
 let appConfig = null;
 let currentPage = null;
 let pageInstances = {};
+const componentDefinitions = {};
+const componentInstances = {};
+const pageComponentRegistry = {};
 
 const appMethods = {
   onLaunch: null,
@@ -19,6 +22,103 @@ function deepClone(obj) {
   return JSON.parse(JSON.stringify(obj));
 }
 
+function createComponentInstance(compPath, compDef, parentPage, props) {
+  props = props || {};
+  var instance = {
+    __path__: compPath,
+    __define__: compDef,
+    __parentPage__: parentPage,
+    __isComponent__: true,
+    data: deepClone(compDef.data || {}),
+    properties: {},
+    setData: function (newData, callback) {
+      if (typeof newData !== "object" || !newData) return;
+      Object.assign(instance.data, newData);
+      if (compDef.observers) {
+        Object.keys(compDef.observers).forEach(function (field) {
+          if (newData.hasOwnProperty(field)) {
+            compDef.observers[field].call(instance, newData[field]);
+          }
+        });
+      }
+      notifyPageDataUpdate(parentPage);
+      if (typeof callback === "function") callback();
+    },
+    triggerEvent: function (eventName, detail) {
+      var pageInstance = pageInstances[parentPage];
+      if (!pageInstance) return;
+      var handlerName = "on" + eventName.charAt(0).toUpperCase() + eventName.slice(1);
+      if (typeof pageInstance[handlerName] === "function") {
+        pageInstance[handlerName].call(pageInstance, detail || {});
+      }
+    },
+  };
+
+  if (compDef.properties) {
+    Object.keys(compDef.properties).forEach(function (propName) {
+      var propDef = compDef.properties[propName];
+      var value = props.hasOwnProperty(propName) ? props[propName] : (propDef.value !== undefined ? propDef.value : null);
+      instance.properties[propName] = value;
+      if (!instance.data.hasOwnProperty(propName)) {
+        instance.data[propName] = value;
+      }
+    });
+  }
+
+  var reservedKeys = ["data", "methods", "properties", "observers", "lifetimes", "created", "attached", "ready", "moved", "detached"];
+  Object.keys(compDef).forEach(function (key) {
+    if (reservedKeys.indexOf(key) !== -1) return;
+    if (typeof compDef[key] === "function") {
+      instance[key] = function () {
+        var args = Array.prototype.slice.call(arguments);
+        return compDef[key].apply(instance, args);
+      };
+    }
+  });
+
+  if (compDef.methods) {
+    Object.keys(compDef.methods).forEach(function (methodName) {
+      if (typeof compDef.methods[methodName] === "function") {
+        instance[methodName] = function () {
+          var args = Array.prototype.slice.call(arguments);
+          return compDef.methods[methodName].apply(instance, args);
+        };
+      }
+    });
+  }
+
+  if (compDef.lifetimes) {
+    if (typeof compDef.lifetimes.created === "function") {
+      compDef.lifetimes.created.call(instance);
+    }
+  }
+
+  return instance;
+}
+
+function notifyPageDataUpdate(pagePath) {
+  var pageInstance = pageInstances[pagePath];
+  if (!pageInstance) return;
+
+  var mergedData = deepClone(pageInstance.data);
+  var pageComps = pageComponentRegistry[pagePath];
+  if (pageComps) {
+    Object.keys(pageComps).forEach(function (compName) {
+      var compInfo = pageComps[compName];
+      var compInstance = componentInstances[compInfo.uid];
+      if (compInstance) {
+        mergedData["__comp_" + compName] = deepClone(compInstance.data);
+      }
+    });
+  }
+
+  sendMessage("setData", {
+    path: pagePath,
+    data: mergedData,
+    fullData: deepClone(mergedData),
+  });
+}
+
 function createPageInstance(pagePath, pageDefine) {
   var instance = {
     __path__: pagePath,
@@ -27,10 +127,47 @@ function createPageInstance(pagePath, pageDefine) {
     setData: function (newData, callback) {
       if (typeof newData !== "object" || !newData) return;
       Object.assign(instance.data, newData);
+
+      var pageComps = pageComponentRegistry[pagePath];
+      if (pageComps) {
+        Object.keys(pageComps).forEach(function (compName) {
+          var compInfo = pageComps[compName];
+          var compInstance = componentInstances[compInfo.uid];
+          if (!compInstance || !compInfo.definition.properties) return;
+
+          var updatedProps = {};
+          Object.keys(compInfo.definition.properties).forEach(function (propName) {
+            if (newData[propName] !== undefined) {
+              compInstance.properties[propName] = newData[propName];
+              compInstance.data[propName] = newData[propName];
+              updatedProps[propName] = newData[propName];
+            }
+          });
+
+          if (Object.keys(updatedProps).length > 0 && compInfo.definition.observers) {
+            Object.keys(compInfo.definition.observers).forEach(function (field) {
+              if (updatedProps.hasOwnProperty(field)) {
+                compInfo.definition.observers[field].call(compInstance, updatedProps[field]);
+              }
+            });
+          }
+        });
+      }
+
+      var mergedData = deepClone(instance.data);
+      if (pageComps) {
+        Object.keys(pageComps).forEach(function (compName) {
+          var compInfo = pageComps[compName];
+          var compInstance = componentInstances[compInfo.uid];
+          if (compInstance) {
+            mergedData["__comp_" + compName] = deepClone(compInstance.data);
+          }
+        });
+      }
       sendMessage("setData", {
         path: pagePath,
-        data: newData,
-        fullData: deepClone(instance.data),
+        data: mergedData,
+        fullData: deepClone(mergedData),
       });
       if (typeof callback === "function") callback();
     },
@@ -61,6 +198,152 @@ function createPageInstance(pagePath, pageDefine) {
   return instance;
 }
 
+self.Component = function (options) {
+  var compPath = "__pending_component__";
+  componentDefinitions[compPath] = options;
+  console.log("[Worker] Component registered (pending path)");
+};
+
+function registerComponentAtPath(compPath, options) {
+  componentDefinitions[compPath] = options;
+  console.log("[Worker] Component registered:", compPath);
+}
+
+async function loadComponentScript(compPath) {
+  if (componentDefinitions[compPath]) {
+    return componentDefinitions[compPath];
+  }
+
+  var scriptPath = compPath + "/index.js";
+  var result = await requestFile(scriptPath);
+  if (!result.success) {
+    console.error("[Worker] Failed to load component script:", compPath, result.error);
+    return null;
+  }
+
+  var pendingCompKey = "__pending_component__";
+  delete componentDefinitions[pendingCompKey];
+
+  await preloadModules(result.content, scriptPath);
+  executeScriptForComponent(result.content, scriptPath);
+
+  var compDef = componentDefinitions[pendingCompKey] || null;
+  if (compDef) {
+    delete componentDefinitions[pendingCompKey];
+    registerComponentAtPath(compPath, compDef);
+  }
+
+  return compDef;
+}
+
+function executeScriptForComponent(code, fromPath) {
+  var moduleExports = {};
+  var moduleRef = { exports: moduleExports };
+  var localRequire = createRequire(fromPath || "");
+
+  try {
+    var fn = new Function("require", "module", "exports", code);
+    fn(localRequire, moduleRef, moduleExports);
+  } catch (err) {
+    console.error("[Worker] Component script execution error:", err);
+  }
+}
+
+async function loadPageComponents(pagePath) {
+  var configPath = pagePath + "/index.json";
+  var result = await requestFile(configPath);
+  if (!result.success) return;
+
+  var pageConfig;
+  try {
+    pageConfig = JSON.parse(result.content);
+  } catch (e) {
+    return;
+  }
+
+  var usingComponents = pageConfig.usingComponents;
+  if (!usingComponents || typeof usingComponents !== "object") return;
+
+  if (!pageComponentRegistry[pagePath]) {
+    pageComponentRegistry[pagePath] = {};
+  }
+
+  var compNames = Object.keys(usingComponents);
+  for (var i = 0; i < compNames.length; i++) {
+    var compName = compNames[i];
+    var compPath = usingComponents[compName];
+    if (compPath.startsWith("/")) {
+      compPath = compPath.slice(1);
+    }
+
+    var compDef = await loadComponentScript(compPath);
+    if (!compDef) {
+      console.error("[Worker] Failed to load component:", compName, "at", compPath);
+      continue;
+    }
+
+    var uid = pagePath + "::" + compName;
+    pageComponentRegistry[pagePath][compName] = {
+      path: compPath,
+      uid: uid,
+      definition: compDef,
+    };
+
+    console.log("[Worker] Component loaded:", compName, "->", compPath);
+  }
+}
+
+function initializeComponentInstances(pagePath, pageData) {
+  var pageComps = pageComponentRegistry[pagePath];
+  if (!pageComps) return;
+
+  Object.keys(pageComps).forEach(function (compName) {
+    var compInfo = pageComps[compName];
+    var props = {};
+
+    if (compInfo.definition.properties) {
+      Object.keys(compInfo.definition.properties).forEach(function (propName) {
+        var dataKey = compName + "." + propName;
+        if (pageData && pageData[dataKey] !== undefined) {
+          props[propName] = pageData[dataKey];
+        }
+      });
+    }
+
+    var instance = createComponentInstance(compInfo.path, compInfo.definition, pagePath, props);
+    componentInstances[compInfo.uid] = instance;
+
+    if (compInfo.definition.lifetimes && typeof compInfo.definition.lifetimes.attached === "function") {
+      compInfo.definition.lifetimes.attached.call(instance);
+    }
+  });
+}
+
+function getComponentEventMap(pagePath) {
+  var pageComps = pageComponentRegistry[pagePath];
+  if (!pageComps) return {};
+
+  var eventMap = {};
+  Object.keys(pageComps).forEach(function (compName) {
+    var compInfo = pageComps[compName];
+    var compInstance = componentInstances[compInfo.uid];
+    if (!compInstance) return;
+
+    var methods = compInfo.definition.methods || {};
+    var methodNames = Object.keys(methods).filter(function (k) {
+      return typeof methods[k] === "function";
+    });
+
+    eventMap[compName] = {
+      uid: compInfo.uid,
+      path: compInfo.path,
+      methods: methodNames,
+    };
+  });
+
+  return eventMap;
+}
+
 self.App = function (options) {
   if (options.globalData) {
     appMethods.globalData = options.globalData;
@@ -83,6 +366,20 @@ self.Page = function (options) {
   var instance = createPageInstance(pagePath, options);
   pageInstances[pagePath] = instance;
 
+  initializeComponentInstances(pagePath, instance.data);
+
+  var mergedData = deepClone(instance.data);
+  var pageComps = pageComponentRegistry[pagePath];
+  if (pageComps) {
+    Object.keys(pageComps).forEach(function (compName) {
+      var compInfo = pageComps[compName];
+      var compInstance = componentInstances[compInfo.uid];
+      if (compInstance) {
+        mergedData["__comp_" + compName] = deepClone(compInstance.data);
+      }
+    });
+  }
+
   console.log(
     "[Worker] Page registered:",
     pagePath,
@@ -102,7 +399,8 @@ self.Page = function (options) {
 
   sendMessage("pageReady", {
     path: pagePath,
-    data: deepClone(instance.data),
+    data: deepClone(mergedData),
+    componentEventMap: getComponentEventMap(pagePath),
   });
 };
 
@@ -381,6 +679,9 @@ async function loadPageScript(pagePath) {
   var result = await requestFile(scriptPath);
   if (result.success) {
     currentPage = pagePath;
+
+    await loadPageComponents(pagePath);
+
     await preloadModules(result.content, scriptPath);
     executeScript(result.content, scriptPath);
   } else {
@@ -418,6 +719,28 @@ async function loadAppScript() {
   }
 }
 
+function handleComponentEvent(pagePath, compName, eventName, eventPayload) {
+  var pageComps = pageComponentRegistry[pagePath];
+  if (!pageComps || !pageComps[compName]) {
+    console.warn("[Worker] Unknown component:", compName, "on page:", pagePath);
+    return;
+  }
+
+  var compInfo = pageComps[compName];
+  var compInstance = componentInstances[compInfo.uid];
+  if (!compInstance) {
+    console.warn("[Worker] No component instance:", compName);
+    return;
+  }
+
+  var handler = compInstance[eventName];
+  if (typeof handler === "function") {
+    handler.call(compInstance, eventPayload || {});
+  } else {
+    console.warn("[Worker] No handler for event:", eventName, "on component:", compName);
+  }
+}
+
 var messageHandlers = {
   init: async (msg) => {
     var data = msg.data;
@@ -440,6 +763,13 @@ var messageHandlers = {
     var pagePath = data.pagePath;
     var eventName = data.eventName;
     var eventPayload = data.eventPayload;
+    var compName = data.compName;
+
+    if (compName) {
+      handleComponentEvent(pagePath, compName, eventName, eventPayload);
+      return;
+    }
+
     console.log("[Worker] Event received:", eventName, "on page:", pagePath);
 
     var instance = pageInstances[pagePath];
@@ -476,7 +806,21 @@ var messageHandlers = {
       if (typeof pageInstances[hidePath].onUnload === "function") {
         pageInstances[hidePath].onUnload();
       }
+
+      var pageComps = pageComponentRegistry[hidePath];
+      if (pageComps) {
+        Object.keys(pageComps).forEach(function (compName) {
+          var compInfo = pageComps[compName];
+          var compInstance = componentInstances[compInfo.uid];
+          if (compInstance && compInfo.definition.lifetimes && typeof compInfo.definition.lifetimes.detached === "function") {
+            compInfo.definition.lifetimes.detached.call(compInstance);
+          }
+          delete componentInstances[compInfo.uid];
+        });
+      }
+
       delete pageInstances[hidePath];
+      delete pageComponentRegistry[hidePath];
       console.log("[Worker] Page destroyed:", hidePath);
     }
   },

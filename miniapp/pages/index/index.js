@@ -1,7 +1,3 @@
-
-
-
-
 Page({
   data: {
     motto: 'Hello MiniApp!',
@@ -24,8 +20,8 @@ Page({
     console.log('[Index Page] onShow');
   },
 
-  increment: function () {
-    var newCount = this.data.count + 1;
+  onIncrement: function (e) {
+    var newCount = (e && e.count != null) ? e.count : this.data.count + 1;
     var newClickCount = this.data.clickCount + 1;
     this.setData({
       count: newCount,
@@ -33,8 +29,8 @@ Page({
     });
   },
 
-  decrement: function () {
-    var newCount = this.data.count - 1;
+  onDecrement: function (e) {
+    var newCount = (e && e.count != null) ? e.count : this.data.count - 1;
     var newClickCount = this.data.clickCount + 1;
     this.setData({
       count: newCount,
@@ -42,7 +38,7 @@ Page({
     });
   },
 
-  reset: function () {
+  onReset: function () {
     this.setData({
       count: 0,
       clickCount: 0,

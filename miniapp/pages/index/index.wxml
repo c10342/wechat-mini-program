@@ -1,23 +1,7 @@
 <view class="container">
-  <view class="header">
-    <text class="title">{{motto}}</text>
-    <text class="subtitle">{{subtitle}}</text>
-  </view>
+  <page-header title="{{motto}}" subtitle="{{subtitle}}" />
 
-  <view class="card">
-    <text class="card-title">Counter Demo</text>
-    <view class="counter-display">
-      <text class="counter-number">{{count}}</text>
-      <text class="counter-label">current count</text>
-    </view>
-    <view class="btn-group">
-      <view class="btn btn-danger" bindtap="decrement">-1</view>
-      <view class="btn btn-primary" bindtap="increment">+1</view>
-    </view>
-    <view class="btn-group">
-      <view class="btn btn-success" bindtap="reset">Reset</view>
-    </view>
-  </view>
+  <counter count="{{count}}" label="current count" bind:increment="onIncrement" bind:decrement="onDecrement" bind:reset="onReset" />
 
   <view class="card">
     <text class="card-title">System Info</text>

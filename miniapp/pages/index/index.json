@@ -1,3 +1,7 @@
 {
-  "navigationBarTitleText": "Home"
+  "navigationBarTitleText": "Home",
+  "usingComponents": {
+    "page-header": "/components/page-header",
+    "counter": "/components/counter"
+  }
 }

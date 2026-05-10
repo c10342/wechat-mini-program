@@ -29,15 +29,31 @@
     }
   });
 
+  function findComponentName(el) {
+    var current = el;
+    while (current && current !== document.body) {
+      if (current.hasAttribute && current.hasAttribute('data-comp-name')) {
+        return current.getAttribute('data-comp-name');
+      }
+      current = current.parentElement;
+    }
+    return null;
+  }
+
   function bindEvents(container) {
     var bindElements = container.querySelectorAll('[bindtap]');
     bindElements.forEach(function (el) {
       el.style.cursor = 'pointer';
       el.addEventListener('click', function (e) {
         var eventName = el.getAttribute('bindtap');
+        var compName = findComponentName(el);
+        var dataset = Object.assign({}, el.dataset);
+        if (compName) {
+          dataset.compName = compName;
+        }
         window.pageBridge.sendEvent(eventName, {
           type: 'tap',
-          target: { dataset: Object.assign({}, el.dataset) },
+          target: { dataset: dataset },
         });
       });
     });
@@ -48,9 +64,14 @@
       el.addEventListener('click', function (e) {
         e.stopPropagation();
         var eventName = el.getAttribute('catchtap');
+        var compName = findComponentName(el);
+        var dataset = Object.assign({}, el.dataset);
+        if (compName) {
+          dataset.compName = compName;
+        }
         window.pageBridge.sendEvent(eventName, {
           type: 'tap',
-          target: { dataset: Object.assign({}, el.dataset) },
+          target: { dataset: dataset },
         });
       });
     });
@@ -59,10 +80,15 @@
     inputElements.forEach(function (el) {
       el.addEventListener('input', function (e) {
         var eventName = el.getAttribute('bindinput');
+        var compName = findComponentName(el);
+        var dataset = Object.assign({}, el.dataset);
+        if (compName) {
+          dataset.compName = compName;
+        }
         window.pageBridge.sendEvent(eventName, {
           type: 'input',
           value: e.target.value,
-          target: { dataset: Object.assign({}, el.dataset) },
+          target: { dataset: dataset },
         });
       });
     });
