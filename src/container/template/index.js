@@ -2,33 +2,49 @@ import { findMatchingCloseTag, resolveExpr, evaluateCondition, convertWxmlTags }
 
 export function processWxFor(tpl, data) {
   let output = tpl;
-  const wxForOpenRegex = /<(\w+[\w-]*)([^>]*)\swx:for="([^"]+)"(?:\s+wx:for-item="([^"]+)")?(?:\s+wx:for-index="([^"]+)")?([^>]*)>/;
   while (true) {
+    const wxForOpenRegex = /<(\w+[\w-]*)\s+([^>]*?)\s*wx:for="([^"]+)"([^>]*)>/;
     const match = wxForOpenRegex.exec(output);
     if (!match) break;
+    
     const tag = match[1];
+    const attrs = match[2];
+    const listExpr = match[3];
+    const rest = match[4];
+    
     const openStart = match.index;
     const openEnd = openStart + match[0].length;
     const closePos = findMatchingCloseTag(output, tag, openEnd);
     if (closePos === -1) break;
+    
     const content = output.substring(openEnd, closePos);
     const fullEnd = closePos + ('</' + tag + '>').length;
-
-    const listExpr = match[3];
-    const itemName = match[4];
-    const indexName = match[5];
-
+    
     let expr = listExpr.trim();
     if (expr.startsWith('{{') && expr.endsWith('}}')) {
       expr = expr.slice(2, -2).trim();
     }
+    
     const list = resolveExpr(expr, data);
-    if (!Array.isArray(list)) {
+    if (!Array.isArray(list) || list.length === 0) {
       output = output.substring(0, openStart) + output.substring(fullEnd);
       continue;
     }
-    const item = itemName || 'item';
-    const index = indexName || 'index';
+    
+    const itemMatch = rest.match(/\s+wx:for-item="([^"]+)"/);
+    const indexMatch = rest.match(/\s+wx:for-index="([^"]+)"/);
+    const item = (itemMatch ? itemMatch[1] : null) || 'item';
+    const index = (indexMatch ? indexMatch[1] : null) || 'index';
+    
+    const allAttrs = attrs + rest;
+    const cleanedAttrs = allAttrs.replace(/\s*wx:for="[^"]+"/g, '')
+                                 .replace(/\s*wx:for-item="[^"]+"/g, '')
+                                 .replace(/\s*wx:for-index="[^"]+"/g, '')
+                                 .replace(/\s*wx:if="[^"]+"/g, '')
+                                 .replace(/\s*wx:elif="[^"]+"/g, '')
+                                 .replace(/\s*wx:else\s*/g, '')
+                                 .trim();
+    
     let result = '';
     for (let i = 0; i < list.length; i++) {
       const itemData = Object.assign({}, data);
@@ -38,10 +54,12 @@ export function processWxFor(tpl, data) {
         const value = resolveExpr(e.trim(), itemData);
         return value != null ? String(value) : '';
       });
-      result += '<' + tag + match[2] + match[6] + '>' + rendered + '</' + tag + '>';
+      result += '<' + tag + (cleanedAttrs ? ' ' + cleanedAttrs : '') + '>' + rendered + '</' + tag + '>';
     }
+    
     output = output.substring(0, openStart) + result + output.substring(fullEnd);
   }
+  
   return output;
 }
 
@@ -50,7 +68,7 @@ export function processWxIf(tpl, data) {
   let changed = true;
   while (changed) {
     changed = false;
-    const ifOpenRegex = /<(\w+[\w-]*)([^>]*)\swx:if="([^"]+)"([^>]*)>/;
+    const ifOpenRegex = /<(\w+[\w-]*)([^>]*)\swx:if="([^"]*)"([^>]*)>/;
     const match = ifOpenRegex.exec(output);
     if (!match) break;
 
@@ -70,7 +88,7 @@ export function processWxIf(tpl, data) {
     let remaining = output.substring(chainEnd);
 
     const elifOpenRegex = new RegExp(
-      '^\\s*<' + tag.replace(/-/g, '\\-') + '([^>]*)\\s+wx:elif="([^"]+)"([^>]*)>'
+      '^\\s*<' + tag.replace(/-/g, '\\-') + '([^>]*)\\s+wx:elif="([^"]*)"([^>]*)>'
     );
     while (true) {
       const elifMatch = remaining.match(elifOpenRegex);
