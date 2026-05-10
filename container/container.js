@@ -60,6 +60,37 @@ function evaluateCondition(condition, data) {
   if (expr.startsWith("{{") && expr.endsWith("}}")) {
     expr = expr.slice(2, -2).trim();
   }
+  var compMatch = expr.match(/^(.+?)\s*(===|!==|>=|<=|>|<)\s*(.+)$/);
+  if (compMatch) {
+    var left = resolveExpr(compMatch[1].trim(), data);
+    var op = compMatch[2];
+    var rightRaw = compMatch[3].trim();
+    var right;
+    if (
+      (rightRaw.startsWith('"') && rightRaw.endsWith('"')) ||
+      (rightRaw.startsWith("'") && rightRaw.endsWith("'"))
+    ) {
+      right = rightRaw.slice(1, -1);
+    } else if (rightRaw === "true") {
+      right = true;
+    } else if (rightRaw === "false") {
+      right = false;
+    } else if (rightRaw === "null") {
+      right = null;
+    } else if (/^-?\d+(\.\d+)?$/.test(rightRaw)) {
+      right = Number(rightRaw);
+    } else {
+      right = resolveExpr(rightRaw, data);
+    }
+    switch (op) {
+      case "===": return left === right;
+      case "!==": return left !== right;
+      case ">=": return left >= right;
+      case "<=": return left <= right;
+      case ">": return left > right;
+      case "<": return left < right;
+    }
+  }
   var val = resolveExpr(expr, data);
   return !!val;
 }
@@ -91,15 +122,74 @@ function processWxFor(tpl, data) {
   return output;
 }
 
+function processWxIf(tpl, data) {
+  var output = tpl;
+  var changed = true;
+  while (changed) {
+    changed = false;
+    var ifRegex = /<(\w+)([^>]*)\swx:if="([^"]*)"([^>]*)>([\s\S]*?)<\/\1>/;
+    var match = ifRegex.exec(output);
+    if (!match) break;
+
+    var tag = match[1];
+    var chainStart = match.index;
+    var chainEnd = chainStart + match[0].length;
+
+    var blocks = [];
+    blocks.push({ condition: match[3], before: match[2], after: match[4], content: match[5] });
+
+    var remaining = output.substring(chainEnd);
+
+    var elifRegex = new RegExp(
+      "^\\s*<" + tag + "([^>]*)\\s+wx:elif=\"([^\"]*)\"([^>]*)>([\\s\\S]*?)<\\/" + tag + ">"
+    );
+    while (true) {
+      var elifMatch = remaining.match(elifRegex);
+      if (!elifMatch) break;
+      blocks.push({
+        condition: elifMatch[2],
+        before: elifMatch[1],
+        after: elifMatch[3],
+        content: elifMatch[4],
+      });
+      chainEnd += elifMatch[0].length;
+      remaining = output.substring(chainEnd);
+    }
+
+    var elseRegex = new RegExp(
+      "^\\s*<" + tag + "([^>]*)\\s+wx:else([^>]*)>([\\s\\S]*?)<\\/" + tag + ">"
+    );
+    var elseMatch = remaining.match(elseRegex);
+    if (elseMatch) {
+      blocks.push({
+        condition: null,
+        before: elseMatch[1],
+        after: elseMatch[2],
+        content: elseMatch[3],
+      });
+      chainEnd += elseMatch[0].length;
+    }
+
+    var result = "";
+    for (var i = 0; i < blocks.length; i++) {
+      var block = blocks[i];
+      if (block.condition === null || evaluateCondition(block.condition, data)) {
+        result =
+          "<" + tag + block.before + block.after + ">" + block.content + "</" + tag + ">";
+        break;
+      }
+    }
+
+    output = output.substring(0, chainStart) + result + output.substring(chainEnd);
+    changed = true;
+  }
+  return output;
+}
+
 function processWxDirectives(tpl, data) {
   var output = tpl;
   output = processWxFor(output, data);
-  output = output.replace(/<(\w+)([^>]*)\swx:if="([^"]*)"([^>]*)>([\s\S]*?)<\/\1>/g, function (match, tag, before, condition, after, content) {
-    if (evaluateCondition(condition, data)) {
-      return "<" + tag + before + after + ">" + content + "</" + tag + ">";
-    }
-    return "";
-  });
+  output = processWxIf(output, data);
   return output;
 }
 

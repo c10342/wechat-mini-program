@@ -38,6 +38,15 @@
   </view>
 
   <view class="card">
+    <text class="card-title">Visit Status (wx:if / wx:elif / wx:else)</text>
+    <view class="status-block">
+      <view class="status-item status-low" wx:if="{{visitCount === 0}}">Newcomer - No visits yet</view>
+      <view class="status-item status-med" wx:elif="{{visitCount < 5}}">Regular - {{visitCount}} visits</view>
+      <view class="status-item status-high" wx:else>VIP - {{visitCount}} visits!</view>
+    </view>
+  </view>
+
+  <view class="card">
     <text class="card-title">Actions</text>
     <view class="btn-group" style="margin-top: 12px;">
       <view class="btn btn-primary" bindtap="addVisit">Add Visit</view>

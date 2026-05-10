@@ -553,3 +553,200 @@ index.html 加载
   → page-preload.js → page-view.js onRender
   → 更新 innerHTML → bindEvents() 重新绑定
 ```
+
+---
+
+## 四、WXML 指令处理引擎
+
+模板编译引擎位于 `container/container.js` 中，通过 `processWxDirectives(tpl, data)` 统一调度，按 `wx:for` → `wx:if/elif/else` 的顺序依次处理。
+
+### 整体调用链
+
+```
+renderTemplate(tpl, data)
+  ├── processWxDirectives(tpl, data)
+  │     ├── processWxFor(tpl, data)         ← 展开 wx:for 循环
+  │     └── processWxIf(tpl, data)          ← 解析 if/elif/else 链
+  ├── 替换 {{expression}} 数据绑定
+  └── convertWxmlTags(html)                 ← 标签名转换
+```
+
+**处理顺序的设计意图**：先展开循环（`wx:for`），再进行条件判断（`wx:if/elif/else`），确保条件指令看到的是循环展开后的完整内容。
+
+---
+
+### 基础设施函数
+
+#### resolveExpr(expr, data) — 表达式解析
+
+支持以 `.` 分隔的多级属性路径访问：
+
+```javascript
+resolveExpr("user.name", { user: { name: "Tom" } })
+// → "Tom"
+
+resolveExpr("todos.length", { todos: ["a", "b"] })
+// → 2
+```
+
+将表达式按 `.` 分割为键名数组，逐层从 `data` 对象中取值。遇到 `null`/`undefined` 中途返回 `null`。
+
+#### evaluateCondition(condition, data) — 条件求值
+
+兼容两种写法：
+
+| 写法 | 示例 |
+|------|------|
+| 花括号包裹 | `{{visitCount === 0}}` |
+| 裸写 | `visitCount === 0` |
+
+**支持两类条件**：
+
+1. **比较表达式**：通过正则 `^(.+?)\s*(===|!==|>=|<=|>|<)\s*(.+)$` 拆分为左值、运算符、右值
+   - 左值通过 `resolveExpr()` 从 data 取值
+   - 右值智能推断类型：字符串字面量（`"Tom"`）、布尔（`true`/`false`）、null、数字、或变量路径
+2. **简单变量**：不匹配比较运算符时，回退到 `!!resolveExpr()` 真假判断
+
+```
+evaluateCondition("{{count < 5}}", { count: 3 })
+  → 剥掉 {{ }} → "count < 5"
+  → 正则拆分 → left="count", op="<", rightRaw="5"
+  → resolveExpr("count", {count:3}) → 3
+  → Number("5") → 5
+  → 3 < 5 → true
+```
+
+---
+
+### processWxFor(tpl, data) — 列表渲染
+
+**正则匹配**：
+
+```
+/<(\w+)([^>]*)\swx:for="([^"]*)"
+  (?:\s+wx:for-item="([^"]*)")?
+  (?:\s+wx:for-index="([^"]*)")?
+  ([^>]*)>([\s\S]*?)<\/\1>/g
+```
+
+| 捕获组 | 含义 |
+|--------|------|
+| `tag` | 标签名（view、text 等） |
+| `before` | `wx:for` 之前的属性（如 class） |
+| `listExpr` | 数组表达式（`{{items}}` 或 `items`） |
+| `itemName` | 可选，循环变量名，默认 `item` |
+| `indexName` | 可选，索引变量名，默认 `index` |
+| `after` | `wx:for-item/wx:for-index` 之后的属性 |
+| `content` | 标签子内容 |
+
+**处理流程**：
+
+```
+匹配 wx:for 标签
+  → 解析列表表达式（兼容 {{ }} 和裸写）
+  → resolveExpr() 获取数组
+  → 非数组则返回空字符串
+  → 遍历数组每个元素：
+      → 浅拷贝 data，注入 item 和 index 变量
+      → 对子内容中的 {{ }} 做数据绑定替换
+      → 拼接结果（移除 wx:for 等指令属性）
+```
+
+**支持的语法**：
+
+```xml
+<!-- 基本用法 -->
+<view wx:for="{{items}}">{{item}}</view>
+
+<!-- 对象数组 -->
+<view wx:for="{{users}}">{{item.name}}</view>
+
+<!-- 自定义变量名和索引名 -->
+<view wx:for="{{items}}" wx:for-item="todo" wx:for-index="idx">
+  {{idx}}: {{todo}}
+</view>
+
+<!-- 多级路径 -->
+<view wx:for="{{data.list}}">{{item}}</view>
+```
+
+---
+
+### processWxIf(tpl, data) — 条件渲染（if/elif/else）
+
+与 `wx:for` 的单次正则替换不同，`wx:if/elif/else` 需要**链式条件组匹配**，因为它们在语义上是一个整体——第一个条件为真时后续分支全部跳过。
+
+**算法流程**：
+
+```
+while (还有未处理的 wx:if) {
+  1. exec 匹配第一个 wx:if 标签 → 记录 chainStart/chainEnd
+  2. blocks = [ { condition, content } ]    ← if 块入队
+
+  3. 从 chainEnd 位置开始，循环匹配 wx:elif（同标签名）
+     → 每个 elif 块入队，chainEnd 后移
+
+  4. 检查 chainEnd 位置是否有 wx:else（同标签名）
+     → else 块入队（condition = null），chainEnd 后移
+
+  5. 遍历 blocks，第一个 condition 为真（或 condition === null）的块输出
+     → 其余块丢弃
+
+  6. 用结果替换 chainStart ~ chainEnd 的整个链
+}
+```
+
+**关键设计**：
+
+- **标签名一致性**：elif 和 else 的正则动态构建，使用 if 块的标签名（`tag`）确保链的完整性。例如 `view wx:if` 后面只能跟 `view wx:elif`，不会错误匹配 `text wx:elif`
+- **chainEnd 追踪**：每次匹配成功后 `chainEnd += match[0].length`，确保连续的 elif/else 被正确收集
+- **while 循环**：处理完一条 if 链后 `changed = true`，继续处理模板中的其他独立 if 链
+- **condition = null**：`wx:else` 块的 condition 设为 null，在求值时视为"始终为真"，作为兜底分支
+
+**支持的语法**：
+
+```xml
+<!-- 单独 wx:if -->
+<view wx:if="{{show}}">内容</view>
+
+<!-- if + else -->
+<view wx:if="{{isVip}}">VIP</view>
+<view wx:else>普通用户</view>
+
+<!-- if + elif + else -->
+<view wx:if="{{level === 1}}">初级</view>
+<view wx:elif="{{level === 2}}">中级</view>
+<view wx:elif="{{level >= 3}}">高级</view>
+<view wx:else>未知等级</view>
+```
+
+---
+
+### 指令处理在渲染管线中的位置
+
+```
+renderTemplate(tpl, data)
+  │
+  ├─ ① processWxDirectives()
+  │     ├─ processWxFor()      展开 wx:for，内部完成子元素的 {{ }} 绑定
+  │     └─ processWxIf()       解析 if/elif/else 链式条件
+  │
+  ├─ ② 全局 {{ }} 替换          处理非 wx:for 子内容的数据绑定
+  │
+  └─ ③ convertWxmlTags()       view→div, text→span, image→img
+```
+
+**① 先于 ② 的原因**：`wx:for` 内部的 `{{ }}` 在 `processWxFor` 中已经完成绑定（因为需要注入 `item`/`index` 变量），步骤 ② 只处理非循环区域的绑定。
+
+**① 中 for 先于 if 的原因**：先展开循环生成所有元素，再对展开后的结果做条件过滤。这与微信小程序的实际行为一致。
+
+---
+
+### 当前实现的局限性
+
+| 局限 | 说明 |
+|------|------|
+| 嵌套同名标签 | 正则 `[\s\S]*?` 非贪婪匹配遇到嵌套同名标签时会提前截断（如 `<view wx:if>...<view>...</view>...</view>`） |
+| wx:for 与 wx:if 同标签 | 同一个标签同时写 `wx:for` 和 `wx:if` 时，只有 `wx:for` 生效（微信小程序中两者可共存） |
+| 表达式复杂度 | 比较表达式仅支持单次二元比较，不支持 `&&`、`||`、`!`、三元运算等复合表达式 |
+| 属性顺序敏感 | `wx:for` 必须出现在 `wx:for-item`/`wx:for-index` 之前，`wx:elif`/`wx:else` 必须紧跟 `wx:if` 同标签名节点 |
