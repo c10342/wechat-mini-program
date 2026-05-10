@@ -2,6 +2,7 @@ import { sendMessage, parseQuery } from '../utils/index.js';
 import { loadPage } from '../page-loader/index.js';
 import { incrementRequestIdCounter, pendingChooseFileCallbacks } from '../state.js';
 import { appMethods } from '../state.js';
+import { pageInstances } from '../state.js';
 
 export const wx = {
   navigateTo: function (params) {
@@ -100,4 +101,3 @@ export function getCurrentPages() {
   return Object.values(pageInstances);
 }
 
-import { pageInstances } from '../state.js';

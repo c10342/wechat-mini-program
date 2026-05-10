@@ -107,6 +107,13 @@ export function createPageInstance(pagePath, pageDefine) {
     });
   }
 
+  instance.triggerEvent = function (eventName, detail) {
+    const handlerName = 'on' + eventName.charAt(0).toUpperCase() + eventName.slice(1);
+    if (typeof instance[handlerName] === 'function') {
+      instance[handlerName].call(instance, detail || {});
+    }
+  };
+
   return instance;
 }
 

@@ -85,8 +85,8 @@ export function registerCustomElement(elementName, compDef) {
       el.style.cursor = 'pointer';
       el.addEventListener('click', (e) => {
         e.stopPropagation();
-        const eventName = el.getAttribute('bindtap');
-        self._fireEvent(eventName, {
+        const methodName = el.getAttribute('bindtap');
+        self._fireEvent(methodName, {
           type: 'tap',
           target: { dataset: Object.assign({}, el.dataset) },
         });
@@ -96,13 +96,25 @@ export function registerCustomElement(elementName, compDef) {
       el.style.cursor = 'pointer';
       el.addEventListener('click', (e) => {
         e.stopPropagation();
-        const eventName = el.getAttribute('catchtap');
-        self._fireEvent(eventName, {
+        const methodName = el.getAttribute('catchtap');
+        self._fireEvent(methodName, {
           type: 'tap',
           target: { dataset: Object.assign({}, el.dataset) },
         });
       });
     });
+  };
+
+  klass.prototype._fireEvent = function (eventName, detail) {
+    this.dispatchEvent(new CustomEvent('comp-event', {
+      bubbles: true,
+      composed: true,
+      detail: {
+        compName: this.tagName.toLowerCase(),
+        eventName: eventName,
+        eventPayload: detail,
+      },
+    }));
   };
 
   klass.prototype._fireEvent = function (eventName, detail) {

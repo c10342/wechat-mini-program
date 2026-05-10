@@ -8,9 +8,10 @@ import { notifyPageDataUpdate } from '../page/index.js';
 import { requestFile } from '../file/index.js';
 import { preloadModules } from '../module/index.js';
 
-export function createComponentInstance(compPath, compDef, parentPage, props) {
+export function createComponentInstance(compName, compPath, compDef, parentPage, props) {
   props = props || {};
   const instance = {
+    __name__: compName,
     __path__: compPath,
     __define__: compDef,
     __parentPage__: parentPage,
@@ -32,9 +33,9 @@ export function createComponentInstance(compPath, compDef, parentPage, props) {
     },
     triggerEvent: function (eventName, detail) {
       const pageInstance = pageInstances[parentPage];
-      if (!pageInstance) return;
       const handlerName = 'on' + eventName.charAt(0).toUpperCase() + eventName.slice(1);
-      if (typeof pageInstance[handlerName] === 'function') {
+
+      if (pageInstance && typeof pageInstance[handlerName] === 'function') {
         pageInstance[handlerName].call(pageInstance, detail || {});
       }
     },

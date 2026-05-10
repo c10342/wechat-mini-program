@@ -113,7 +113,7 @@ export function initializeComponentInstances(pagePath, pageData) {
       });
     }
 
-    const instance = createComponentInstance(compInfo.path, compInfo.definition, pagePath, props);
+    const instance = createComponentInstance(compName, compInfo.path, compInfo.definition, pagePath, props);
     componentInstances[compInfo.uid] = instance;
 
     if (compInfo.definition.lifetimes && typeof compInfo.definition.lifetimes.attached === 'function') {

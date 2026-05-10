@@ -19,6 +19,7 @@ export default defineConfig({
       preserveEntrySignatures: 'strict',
     },
     minify: false,
+    sourcemap: true,
   },
   resolve: {
     alias: {

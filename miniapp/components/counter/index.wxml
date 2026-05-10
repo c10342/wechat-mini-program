@@ -6,7 +6,7 @@
   </view>
   <view class="btn-group">
     <view class="btn btn-danger" bindtap="onDecrement">-1</view>
-    <view class="btn btn-primary" bindtap="onIncrement">+1</view>
+    <view class="btn btn-primary" bindtap="increment">+1</view>
   </view>
   <view class="btn-group">
     <view class="btn btn-success" bindtap="onReset">Reset</view>

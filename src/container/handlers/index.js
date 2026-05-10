@@ -144,6 +144,25 @@ const messageHandlers = {
       },
     });
   },
+  componentEvent: async (msg) => {
+    const data = msg.data;
+    const pagePath = data.pagePath;
+    const compName = data.compName;
+    const eventName = data.eventName;
+    const detail = data.detail;
+
+    console.log('[Container] Component event:', eventName, 'from:', compName, 'on page:', pagePath);
+
+    worker().postMessage({
+      type: 'event',
+      data: {
+        pagePath: pagePath,
+        eventName: eventName,
+        eventPayload: { type: 'tap', detail: detail },
+        compName: compName,
+      },
+    });
+  },
 };
 
 export async function handleWorkerMessage(msg) {

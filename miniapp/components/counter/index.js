@@ -32,7 +32,7 @@ Component({
   },
 
   methods: {
-    onIncrement: function () {
+    increment: function () {
       this.triggerEvent('increment', { count: this.properties.count + 1 });
     },
     onDecrement: function () {

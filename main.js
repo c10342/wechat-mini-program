@@ -24,7 +24,7 @@ function createMainWindow(config) {
       sandbox: true,
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'container', 'container-preload.js'),
+      preload: path.join(__dirname, 'src', 'preload', 'container-preload.js'),
     },
   });
 
@@ -46,6 +46,7 @@ function createMainWindow(config) {
 
 let viewIdCounter = 0;
 const pageViews = {};
+const webContentsIdToViewId = {};
 
 ipcMain.handle('create-page-view', async (event) => {
   const viewId = ++viewIdCounter;
@@ -53,13 +54,14 @@ ipcMain.handle('create-page-view', async (event) => {
   const view = new WebContentsView({
     webPreferences: {
       sandbox: false,
-      preload: path.join(__dirname, 'container', 'page-preload.js'),
+      preload: path.join(__dirname, 'src', 'preload', 'page-preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
     },
   });
   view.webContents.openDevTools({ mode: 'detach' });
   pageViews[viewId] = view;
+  webContentsIdToViewId[view.webContents.id] = viewId;
   mainWindow.contentView.addChildView(view);
 
   await new Promise((resolve) => {
@@ -108,8 +110,9 @@ ipcMain.on('send-to-page-view', (event, { viewId, channel, data }) => {
 
 ipcMain.on('page-view-event', (event, { viewId, eventName, eventPayload }) => {
   if (mainWindow && !mainWindow.isDestroyed()) {
+    const actualViewId = webContentsIdToViewId[event.sender.id] || viewId;
     mainWindow.webContents.send('page-view-event', {
-      viewId,
+      viewId: actualViewId,
       eventName,
       eventPayload,
     });
