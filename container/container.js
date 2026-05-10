@@ -271,7 +271,8 @@ function resolveComponentTags(html, data, componentEventMap) {
           mergedData[key] = resolveAttrValue(parsedAttrs[key], data);
         }
       });
-      return '<div class="comp-' + compName + '" data-comp-name="' + compName + '">' +
+      var extraClass = parsedAttrs["class"] ? " " + parsedAttrs["class"] : "";
+      return '<div class="comp-' + compName + extraClass + '" data-comp-name="' + compName + '">' +
         renderTemplate(compTpl, mergedData) +
         '</div>';
     });
@@ -284,7 +285,8 @@ function resolveComponentTags(html, data, componentEventMap) {
           mergedData[key] = resolveAttrValue(parsedAttrs[key], data);
         }
       });
-      return '<div class="comp-' + compName + '" data-comp-name="' + compName + '">' +
+      var extraClass = parsedAttrs["class"] ? " " + parsedAttrs["class"] : "";
+      return '<div class="comp-' + compName + extraClass + '" data-comp-name="' + compName + '">' +
         renderTemplate(compTpl, mergedData) +
         '</div>';
     });

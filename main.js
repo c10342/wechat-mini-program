@@ -58,7 +58,7 @@ ipcMain.handle('create-page-view', async (event) => {
       contextIsolation: true,
     },
   });
-
+  view.webContents.openDevTools({ mode: 'detach' });
   pageViews[viewId] = view;
   mainWindow.contentView.addChildView(view);
 
