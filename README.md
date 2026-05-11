@@ -11,23 +11,83 @@ mini-program/
 ├── main.js                      # Electron 主进程入口
 ├── package.json                 # 项目配置 (Electron v42)
 ├── .npmrc                       # npm 镜像（加速 Electron 下载）
+├── vite.config.js               # Vite 构建配置
 │
-├── container/                   # 渲染层（容器）
-│   ├── index.html               #   主窗口：导航栏 + 页面挂载区
-│   ├── container-preload.js     #   主窗口 Preload（contextBridge 安全桥接）
-│   ├── container.js             #   容器控制：页面栈、路由动画、Worker 通信
-│   ├── page-view.html           #   页面视图 HTML 模板
-│   ├── page-view.js             #   页面视图：DOM 更新、事件绑定、Toast
-│   ├── page-preload.js          #   页面视图 Preload（contextBridge 安全桥接）
-│   └── worker-bundle.js         #   运行时由主进程生成的 Worker 脚本副本
-│
-├── framework/                   # 逻辑层（框架）
-│   └── logic-worker.js          #   Web Worker：App/Page 注册、setData、wx API
+├── src/
+│   ├── container/               # 渲染层（主窗口容器）
+│   │   ├── index.html           #   主窗口：导航栏 + 页面挂载区
+│   │   ├── index.js             #   容器控制：页面栈、路由动画、Worker 通信
+│   │   ├── state.js             #   容器状态管理
+│   │   ├── animation/           #   路由动画引擎
+│   │   │   └── index.js
+│   │   ├── components/          #   容器组件（导航栏等）
+│   │   │   └── index.js
+│   │   ├── handlers/            #   IPC 消息处理器
+│   │   │   └── index.js
+│   │   ├── pages/               #   页面视图管理
+│   │   │   └── index.js
+│   │   ├── template/            #   WXML/WXSS 模板编译引擎
+│   │   │   └── index.js
+│   │   ├── utils/               #   容器工具函数
+│   │   │   └── index.js
+│   │   └── worker/              #   Worker 通信管理
+│   │       └── index.js
+│   │
+│   ├── page-view/               # 页面视图层（WebContentsView）
+│   │   ├── page-view.html       #   页面视图 HTML 模板
+│   │   ├── index.js             #   页面视图控制器
+│   │   ├── custom-element/      #   自定义元素封装
+│   │   │   └── index.js
+│   │   ├── events/              #   事件绑定系统
+│   │   │   └── index.js
+│   │   ├── toast/               #   Toast 组件
+│   │   │   └── index.js
+│   │   └── utils/               #   视图工具函数
+│   │       └── index.js
+│   │
+│   ├── preload/                 # Preload 脚本（contextBridge 安全桥接）
+│   │   ├── container-preload.js #   主窗口 Preload
+│   │   └── page-preload.js      #   页面视图 Preload
+│   │
+│   └── worker/                  # 逻辑层（Web Worker）
+│       ├── index.js             #   Worker 入口
+│       ├── state.js             #   Worker 状态管理
+│       ├── app/                 #   App 注册与生命周期
+│       │   └── index.js
+│       ├── component/           #   组件系统
+│       │   └── index.js
+│       ├── component-loader/    #   组件加载器
+│       │   └── index.js
+│       ├── file/                #   文件读取代理
+│       │   └── index.js
+│       ├── handlers/            #   Worker 消息处理器
+│       │   └── index.js
+│       ├── module/              #   CommonJS 模块系统
+│       │   └── index.js
+│       ├── page/                #   Page 注册与生命周期
+│       │   └── index.js
+│       ├── page-loader/         #   页面加载器
+│       │   └── index.js
+│       ├── utils/               #   Worker 工具函数
+│       │   └── index.js
+│       └── wx-api/              #   wx API 兼容层
+│           └── index.js
 │
 └── miniapp/                     # 小程序应用（用户代码）
     ├── app.js                   #   App() 入口注册
     ├── app.json                 #   全局配置（页面路由表、窗口样式）
     ├── app.wxss                 #   全局样式
+    ├── components/              #   自定义组件
+    │   ├── counter/
+    │   │   ├── index.js
+    │   │   ├── index.json
+    │   │   ├── index.wxml
+    │   │   └── index.wxss
+    │   └── page-header/
+    │       ├── index.js
+    │       ├── index.json
+    │       ├── index.wxml
+    │       └── index.wxss
     └── pages/
         ├── index/               #   首页
         │   ├── index.js         #     Page({ data, onLoad, increment... })
@@ -52,8 +112,8 @@ mini-program/
  │                     Electron 主进程 (main.js)                  │
  │                                                               │
  │   BrowserWindow (sandbox: true, contextIsolation: true)       │
- │   ├── 加载 container/index.html（主窗口）                       │
- │   ├── 管理 WebContentsView 池（每页一个独立渲染进程）             │
+ │   ├── 加载 src/container/index.html（主窗口）                  │
+ │   ├── 管理 WebContentsView 池（每页一个独立渲染进程）            │
  │   ├── IPC: create-page-view / destroy-page-view               │
  │   ├── IPC: set-page-view-bounds / show / hide                 │
  │   ├── IPC: send-to-page-view / page-view-event                │
@@ -66,13 +126,13 @@ mini-program/
             │                            │
             ▼                            │
  ┌──────────────────────────────────────┐ │
- │        主窗口 (container.js)          │ │
- │   container.js 通过 containerBridge   │ │
+ │        主窗口 (src/container/)       │ │
+ │   container/index.js 通过 containerBridge│ │
  │   访问 IPC，无 Node.js 直接访问权限    │ │
  │                                      │ │
  │  ┌──────────────┐  ┌──────────────┐  │ │
  │  │   导航栏      │  │  Web Worker   │  │ │
- │  │   nav-bar     │  │ logic-worker  │  │ │
+ │  │   nav-bar     │  │ src/worker/   │  │ │
  │  │              │  │              │  │ │
  │  │  ← 返回      │  │  App() 注册   │  │ │
  │  │   标题       │  │  Page() 注册  │  │ │
@@ -99,8 +159,8 @@ mini-program/
 | 层级 | 位置 | 职责 |
 |------|------|------|
 | **主进程层** | [main.js](main.js) | 窗口管理，WebContentsView 生命周期，IPC 通道，文件读取代理，Worker 脚本构建 |
-| **渲染层** | [container/](container) | 导航栏 UI，页面栈管理，路由动画（slideIn/slideOut），WXML→HTML 编译，Worker 消息调度 |
-| **逻辑层** | [framework/logic-worker.js](framework/logic-worker.js) | 执行 `App()`/`Page()` 注册，管理 Page 实例与 data，处理 `setData`，模拟 `wx` API，模块系统 |
+| **渲染层** | [src/container/](src/container) | 导航栏 UI，页面栈管理，路由动画（slideIn/slideOut），WXML→HTML 编译，Worker 消息调度 |
+| **逻辑层** | [src/worker/](src/worker) | 执行 `App()`/`Page()` 注册，管理 Page 实例与 data，处理 `setData`，模拟 `wx` API，模块系统 |
 
 ### 与微信小程序真实架构的对照
 
@@ -120,7 +180,7 @@ mini-program/
 
 逻辑线程与渲染线程完全隔离，是本项目的核心设计：
 
-- **逻辑层（Web Worker）**：`container.js` 创建 Worker 并加载 `framework/logic-worker.js`。所有 `App()`、`Page()`、`setData()` 在 Worker 中执行，天然无法操作 DOM。
+- **逻辑层（Web Worker）**：`src/container/index.js` 创建 Worker 并加载 `src/worker/index.js`。所有 `App()`、`Page()`、`setData()` 在 Worker 中执行，天然无法操作 DOM。
 - **渲染层（WebContentsView）**：每个页面对应一个独立渲染进程，通过 `contextIsolation: true` + `nodeIntegration: false` 实现安全隔离，仅暴露 `pageBridge` API。
 - **通信桥接**：逻辑层 → `postMessage` → container.js → `IPC send-to-page-view` → 渲染视图；反向则通过 `page-view-event` IPC 回传。
 
@@ -128,7 +188,7 @@ mini-program/
 
 主窗口和页面视图均使用独立的 Preload 脚本 + contextBridge，实现**双层安全隔离**：
 
-**主窗口层 — [container-preload.js](container/container-preload.js)**
+**主窗口层 — [src/preload/container-preload.js](src/preload/container-preload.js)**
 
 暴露 `containerBridge` 对象，仅允许白名单 IPC 通道：
 ```javascript
@@ -148,7 +208,7 @@ contextBridge.exposeInMainWorld('containerBridge', {
 });
 ```
 
-**页面视图层 — [page-preload.js](container/page-preload.js)**
+**页面视图层 — [src/preload/page-preload.js](src/preload/page-preload.js)**
 
 暴露 `pageBridge` 对象，仅允许渲染指令接收和事件发送：
 ```javascript
@@ -158,7 +218,7 @@ contextBridge.exposeInMainWorld('pageBridge', {
 });
 ```
 
-[container.js](container/container.js) 通过 `window.containerBridge` 访问 IPC，**不直接使用 Node.js API**。
+[src/container/index.js](src/container/index.js) 通过 `window.containerBridge` 访问 IPC，**不直接使用 Node.js API**。
 
 ### 3. 页面栈与路由管理
 
@@ -173,13 +233,13 @@ wx.navigateBack → 出栈 + slideOut 动画 + 销毁视图
 wx.redirectTo  → 替换栈顶
 ```
 
-- 页面栈存储在 `container.js` 的 `pageStack[]` 数组中
+- 页面栈存储在 `src/container/index.js` 的 `pageStack[]` 数组中
 - 每次路由变更同步更新导航栏标题和返回按钮可见性
 - 栈深度 > 1 时显示返回按钮
 
 ### 4. 模板编译引擎
 
-轻量级 WXML → HTML 实时编译，由 [container.js](container/container.js) 中的 `renderTemplate()` 实现：
+轻量级 WXML → HTML 实时编译，由 [src/container/template/index.js](src/container/template/index.js) 实现：
 
 **数据绑定** — 正则解析 `{{expression}}`，支持多级路径访问：
 ```
@@ -202,13 +262,13 @@ renderTemplate("{{user.name}}", { user: { name: "test" } })
 
 ```
 用户点击 (WebContentsView 中)
-  → page-view.js: bindEvents() 扫描 [bindtap] 属性绑定 click 监听
-  → page-preload.js: pageBridge.sendEvent(name, payload)
-  → IPC page-view-event → main.js 中转 → container.js 接收
-  → postMessage({ type: 'event' }) → logic-worker.js
+  → src/page-view/events/index.js: bindEvents() 扫描 [bindtap] 属性绑定 click 监听
+  → src/preload/page-preload.js: pageBridge.sendEvent(name, payload)
+  → IPC page-view-event → main.js 中转 → src/container/index.js 接收
+  → postMessage({ type: 'event' }) → src/worker/index.js
   → pageInstances[path][handlerName].call(instance, payload)
   → handler 执行 this.setData(...)
-  → postMessage({ type: 'setData' }) → container.js
+  → postMessage({ type: 'setData' }) → src/container/index.js
   → renderTemplate() + send-to-page-view → DOM 更新
 ```
 
@@ -222,7 +282,7 @@ renderTemplate("{{user.name}}", { user: { name: "test" } })
 模拟微信小程序最核心的视图更新机制：
 
 ```javascript
-// logic-worker.js 中 createPageInstance() 定义 setData
+// src/worker/page/index.js 中 createPageInstance() 定义 setData
 setData: function (newData, callback) {
     Object.assign(instance.data, newData);
     sendMessage('setData', {
@@ -233,7 +293,7 @@ setData: function (newData, callback) {
 }
 ```
 
-数据流：`Worker setData` → `postMessage` → `container.js` 接收 fullData → `renderTemplate(wxml, fullData)` 重新编译 → `send-to-page-view` 渲染指令 → `page-view.js` 更新 `innerHTML`。
+数据流：`Worker setData` → `postMessage` → `src/container/index.js` 接收 fullData → `renderTemplate(wxml, fullData)` 重新编译 → `send-to-page-view` 渲染指令 → `src/page-view/index.js` 更新 `innerHTML`。
 
 ### 7. wx API 兼容层
 
@@ -271,7 +331,7 @@ setData: function (newData, callback) {
           │
           ▼
  ┌──────────────────┐     ┌─────────────────────────────────┐
- │  page-view.js    │     │  page-preload.js                │
+ │  page-view/index.js │     │  page-preload.js              │
  │  bindEvents()    │────▶│  pageBridge.sendEvent()         │
  │  click listener  │     │  → ipcRenderer.send()           │
  └──────────────────┘     └───────────────┬─────────────────┘
@@ -285,13 +345,13 @@ setData: function (newData, callback) {
                           └───────────────┬─────────────────┘
                                           │
                           ┌───────────────▼─────────────────┐
-                          │  container.js                    │
+                          │  container/index.js              │
                           │  containerBridge.onPageViewEvent │
                           │  → worker.postMessage(event)     │
                           └───────────────┬─────────────────┘
                                           │
                           ┌───────────────▼─────────────────┐
-                          │  logic-worker.js (Worker)        │
+                          │  worker/index.js (Worker)        │
                           │  onmessage → 查找 handler        │
                           │  instance[eventName](payload)    │
                           │  → this.setData({ ... })         │
@@ -299,7 +359,7 @@ setData: function (newData, callback) {
                           └───────────────┬─────────────────┘
                                           │
                           ┌───────────────▼─────────────────┐
-                          │  container.js                    │
+                          │  container/index.js              │
                           │  handleWorkerMessage('setData')  │
                           │  → renderTemplate(wxml, data)    │
                           │  → convertWxmlTags()             │
@@ -310,7 +370,7 @@ setData: function (newData, callback) {
                                     IPC: send-to-page-view
                                           │
                           ┌───────────────▼─────────────────┐
-                          │  page-preload.js → page-view.js  │
+                          │  page-preload.js → page-view/index.js │
                           │  pageRoot.innerHTML = html       │
                           │  bindEvents() 重新绑定            │
                           │  ✅ 视图更新完成                   │
@@ -324,12 +384,12 @@ Worker 无法直接访问文件系统，需通过多级 IPC 代理：
 ```
 Worker: requestFile('pages/index/index.js')
   → postMessage({ type: 'readFile', id, path })
-  → container.js: handleWorkerMessage('readFile')
+  → src/container/index.js: handleWorkerMessage('readFile')
   → containerBridge.invoke('read-file', path)
   → main.js: ipcMain.handle('read-file')
   → fs.readFileSync(fullPath)
   → 返回 { success, content }
-  → container.js: worker.postMessage({ type: 'fileResponse' })
+  → src/container/index.js: worker.postMessage({ type: 'fileResponse' })
   → Worker: pendingFileRequests[id](result)
 ```
 
@@ -338,12 +398,12 @@ Worker: requestFile('pages/index/index.js')
 Worker bundle 的构建职责由主进程承担（渲染层无文件系统访问权限）：
 
 ```
-container.js: containerBridge.invoke('build-worker-bundle')
+src/container/index.js: containerBridge.invoke('build-worker-bundle')
   → main.js: ipcMain.handle('build-worker-bundle')
-  → fs.readFileSync('framework/logic-worker.js')
-  → fs.writeFileSync('container/worker-bundle.js')
+  → fs.readFileSync('src/worker/index.js')
+  → fs.writeFileSync('dist/worker-bundle.js')
   → 返回 bundlePath
-  → container.js: new Worker(bundlePath)
+  → src/container/index.js: new Worker(bundlePath)
 ```
 
 ---
@@ -360,7 +420,7 @@ container.js: containerBridge.invoke('build-worker-bundle')
  │  contextIsolation: true                      │
  │                                             │
  │  ┌──────────────┐   contextBridge  ┌──────────────────┐ │
- │  │ container.js │◄───────────────▶ │container-preload │ │
+ │  │ container/index.js │◄───────────────▶ │container-preload │ │
  │  │ (隔离世界)    │  containerBridge │   (preload)      │ │
  │  └──────────────┘  invoke() 白名单  └──────────────────┘ │
  │                     send() 白名单                         │
@@ -387,7 +447,7 @@ container.js: containerBridge.invoke('build-worker-bundle')
 ```
 
 三层隔离确保：
-- **主窗口**：`container.js` 通过白名单 `containerBridge` 访问 IPC，无法直接调用 `require('electron')`
+- **主窗口**：`src/container/index.js` 通过白名单 `containerBridge` 访问 IPC，无法直接调用 `require('electron')`
 - **页面视图**：通过 `pageBridge` 仅能接收渲染指令和发送事件
 - **Worker**：天然无 DOM、无文件系统访问，仅通过 `postMessage` 通信
 
@@ -431,7 +491,7 @@ Worker 内实现了简易 CommonJS 模块加载器：
 
 ### App 生命周期
 
-源码：[logic-worker.js:56-62](framework/logic-worker.js#L56-L62)
+源码：[src/worker/app/index.js](src/worker/app/index.js)
 
 ```javascript
 App({
@@ -444,14 +504,14 @@ App({
 
 | 生命周期 | 触发时机 | 源码调用位置 |
 |---------|---------|------------|
-| `onLaunch` | Worker 初始化时，App 注册完成后调用一次 | [logic-worker.js:413](framework/logic-worker.js#L413) |
-| `onShow` | 预留接口，当前未主动触发 | [logic-worker.js:59](framework/logic-worker.js#L59) |
-| `onHide` | 预留接口，当前未主动触发 | [logic-worker.js:60](framework/logic-worker.js#L60) |
-| `globalData` | 全局共享数据对象，通过 `wx.getApp().globalData` 访问 | [logic-worker.js:57-58](framework/logic-worker.js#L57-L58) |
+| `onLaunch` | Worker 初始化时，App 注册完成后调用一次 | [src/worker/index.js](src/worker/index.js) |
+| `onShow` | 预留接口，当前未主动触发 | [src/worker/app/index.js](src/worker/app/index.js) |
+| `onHide` | 预留接口，当前未主动触发 | [src/worker/app/index.js](src/worker/app/index.js) |
+| `globalData` | 全局共享数据对象，通过 `wx.getApp().globalData` 访问 | [src/worker/app/index.js](src/worker/app/index.js) |
 
 ### Page 生命周期
 
-源码：[logic-worker.js:64-90](framework/logic-worker.js#L64-L90)（实例创建）、[logic-worker.js:370-425](framework/logic-worker.js#L370-L425)（生命周期调用）
+源码：[src/worker/page/index.js](src/worker/page/index.js)
 
 ```javascript
 Page({
@@ -470,23 +530,23 @@ Page({
 
 | 生命周期 | 触发时机 | 源码调用位置 |
 |---------|---------|------------|
-| `onLoad(query)` | Page 注册后立即调用，接收路由参数对象（query string 解析结果） | [logic-worker.js:82-83](framework/logic-worker.js#L82-L83) |
-| `onShow()` | 页面脚本加载完成后调用 | [logic-worker.js:392-394](framework/logic-worker.js#L392-L394) |
-| `onHide()` | 被新页面覆盖时调用（`wx.navigateTo`） | [logic-worker.js:383-385](framework/logic-worker.js#L383-L385) |
-| `onUnload()` | 页面出栈销毁时调用（`wx.navigateBack`） | [logic-worker.js:418-420](framework/logic-worker.js#L418-L420) |
+| `onLoad(query)` | Page 注册后立即调用，接收路由参数对象（query string 解析结果） | [src/worker/page/index.js](src/worker/page/index.js) |
+| `onShow()` | 页面脚本加载完成后调用 | [src/worker/page-loader/index.js](src/worker/page-loader/index.js) |
+| `onHide()` | 被新页面覆盖时调用（`wx.navigateTo`） | [src/worker/page-loader/index.js](src/worker/page-loader/index.js) |
+| `onUnload()` | 页面出栈销毁时调用（`wx.navigateBack`） | [src/worker/page-loader/index.js](src/worker/page-loader/index.js) |
 
 Page 实例属性：
 
 | 属性 | 说明 | 源码位置 |
 |------|------|---------|
-| `data` | 页面初始数据对象 | [logic-worker.js:27](framework/logic-worker.js#L27) |
-| `setData(data, callback)` | 合并数据并发送完整快照到渲染层，触发视图更新 | [logic-worker.js:28-35](framework/logic-worker.js#L28-L35) |
-| 自定义函数 | 直接定义在 Page 选项中的函数，自动绑定 `this` 到实例 | [logic-worker.js:39-45](framework/logic-worker.js#L39-L45) |
-| `methods` | 可选的方法命名空间，其中所有函数也会绑定到实例 | [logic-worker.js:47-54](framework/logic-worker.js#L47-L54) |
+| `data` | 页面初始数据对象 | [src/worker/page/index.js](src/worker/page/index.js) |
+| `setData(data, callback)` | 合并数据并发送完整快照到渲染层，触发视图更新 | [src/worker/page/index.js](src/worker/page/index.js) |
+| 自定义函数 | 直接定义在 Page 选项中的函数，自动绑定 `this` 到实例 | [src/worker/page/index.js](src/worker/page/index.js) |
+| `methods` | 可选的方法命名空间，其中所有函数也会绑定到实例 | [src/worker/page/index.js](src/worker/page/index.js) |
 
 ### app.json 配置
 
-源码消费位置：[main.js:15-30](main.js#L15-L30)、[container.js:105-109](container/container.js#L105-L109)
+源码消费位置：[main.js:15-30](main.js#L15-L30)、[src/container/index.js](src/container/index.js)
 
 ```json
 {
@@ -507,17 +567,17 @@ Page 实例属性：
 
 | 字段 | 类型 | 默认值 | 作用 | 消费位置 |
 |------|------|--------|------|---------|
-| `pages` | `string[]` | — | 页面路由表，第一个元素为启动首页 | [logic-worker.js:410-412](framework/logic-worker.js#L410-L412) |
-| `window.width` | `number` | `375` | 主窗口宽度 | [main.js:22](main.js#L22) |
-| `window.height` | `number` | `667` | 主窗口高度 | [main.js:23](main.js#L23) |
-| `window.navigationBarTitleText` | `string` | `'Mini Program'` | 默认导航栏标题，也用作窗口 title | [main.js:24](main.js#L24)、[container.js:107](container/container.js#L107) |
+| `pages` | `string[]` | — | 页面路由表，第一个元素为启动首页 | [src/worker/page-loader/index.js](src/worker/page-loader/index.js) |
+| `window.width` | `number` | `375` | 主窗口宽度 | [main.js](main.js) |
+| `window.height` | `number` | `667` | 主窗口高度 | [main.js](main.js) |
+| `window.navigationBarTitleText` | `string` | `'Mini Program'` | 默认导航栏标题，也用作窗口 title | [main.js](main.js)、[src/container/index.js](src/container/index.js) |
 | `window.navigationBarBackgroundColor` | `string` | — | 预留：导航栏背景色 | 配置已声明，待实现 |
 | `window.navigationBarTextStyle` | `string` | — | 预留：导航栏文字颜色（black/white） | 配置已声明，待实现 |
 | `window.backgroundColor` | `string` | — | 预留：窗口背景色 | 配置已声明，待实现 |
 
 ### 页面 index.json 配置
 
-源码消费位置：[container.js:83-86](container/container.js#L83-L86)（读取）、[container.js:105-109](container/container.js#L105-L109)（消费）
+源码消费位置：[src/container/index.js](src/container/index.js)
 
 ```json
 {
@@ -527,7 +587,7 @@ Page 实例属性：
 
 | 字段 | 类型 | 作用 | 消费位置 |
 |------|------|------|---------|
-| `navigationBarTitleText` | `string` | 当前页面导航栏标题，覆盖 app.json 中的默认值 | [container.js:107](container/container.js#L107) |
+| `navigationBarTitleText` | `string` | 当前页面导航栏标题，覆盖 app.json 中的默认值 | [src/container/index.js](src/container/index.js) |
 
 **配置优先级**：`页面 index.json.navigationBarTitleText` > `app.json.window.navigationBarTitleText` > `''`
 
@@ -573,16 +633,16 @@ npm run dev
 [3] createMainWindow(config)
     │  new BrowserWindow({
     │    sandbox: true, nodeIntegration: false, contextIsolation: true,
-    │    preload: 'container/container-preload.js'
+    │    preload: 'src/preload/container-preload.js'
     │  })
-    │  mainWindow.loadFile('container/index.html')
+    │  mainWindow.loadFile('src/container/index.html')
     │
     ▼
 [4] did-finish-load → mainWindow.send('init-container', { config, appDir })
     │  (通过 container-preload.js 的 contextBridge 传递)
     │
     ▼
-[5] container.js 接收 'init-container'
+[5] src/container/index.js 接收 'init-container'
     ├── loadAppStyles()                    → containerBridge.invoke('read-file') → 读取 app.wxss
     ├── containerBridge.invoke('build-worker-bundle')  → 主进程构建 Worker 脚本
     └── initWorker(bundlePath)             → new Worker(bundleUrl)
@@ -597,7 +657,7 @@ npm run dev
 [7] Worker → postMessage({ type: 'pageReady', path, data })
     │
     ▼
-[8] container.js 接收 'pageReady'
+[8] src/container/index.js 接收 'pageReady'
     ├── createPageView()         → containerBridge.invoke('create-page-view') → IPC 创建 WebContentsView
     ├── renderPageInView()       → 读取 .wxml + .wxss + .json → renderTemplate → 发送渲染指令
     ├── pageStack.push(path)     → 压入页面栈
@@ -633,6 +693,7 @@ npm run dev
 | contextBridge + Preload | 双层安全通信桥接（主窗口 + 页面视图） |
 | requestAnimationFrame | 页面切换动画驱动 |
 | CSS transition | 交互反馈动画 |
+| Vite | 构建工具 |
 
 ---
 
@@ -647,3 +708,4 @@ npm run dev
 7. **Worker 脚本由主进程构建** — 渲染层无文件系统权限，Worker bundle 构建移至主进程 IPC
 8. **生命周期管理** — `onLoad` / `onShow` / `onHide` / `onUnload` 完整回调链
 9. **模块系统** — Worker 内 CommonJS require 支持，含路径解析和模块缓存
+10. **组件系统** — 支持自定义组件注册和使用 |
