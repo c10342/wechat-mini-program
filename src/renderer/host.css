@@ -1,0 +1,191 @@
+:root {
+  --mini-nav-background: #f6f3ea;
+  --mini-app-background: #fffaf0;
+  color: #261f17;
+  background: transparent;
+  font-family: "Aptos Display", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: transparent;
+}
+
+html,
+body {
+  background-color: transparent;
+}
+
+.host-bar {
+  position: fixed;
+  inset: 0 0 auto;
+  height: 58px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px 9px 16px;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--mini-nav-background) 86%, transparent),
+      color-mix(in srgb, var(--mini-nav-background) 54%, transparent)
+    );
+  backdrop-filter: blur(18px) saturate(1.28);
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.title-label {
+  min-width: 0;
+  overflow: hidden;
+  color: currentColor;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.host-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--mini-nav-background) 48%, transparent);
+  -webkit-app-region: no-drag;
+}
+
+.debug-menu {
+  position: relative;
+  display: grid;
+}
+
+.window-button {
+  width: 34px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: currentColor;
+  font: inherit;
+  cursor: default;
+  transition:
+    background 120ms ease,
+    color 120ms ease,
+    transform 120ms ease;
+}
+
+.window-button:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.window-button:active {
+  transform: translateY(1px);
+}
+
+.debug-menu-button {
+  width: 44px;
+  grid-template-columns: 1fr auto;
+  gap: 1px;
+}
+
+.debug-menu.is-open .debug-menu-button,
+.window-button:focus-visible,
+.debug-menu-item:focus-visible {
+  outline: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+  outline-offset: 2px;
+}
+
+.debug-menu-panel {
+  position: absolute;
+  top: calc(100% + 9px);
+  right: 0;
+  z-index: 5;
+  width: 184px;
+  padding: 5px;
+  border: 1px solid rgba(38, 31, 23, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 10px 24px rgba(38, 31, 23, 0.12),
+    0 1px 3px rgba(38, 31, 23, 0.08);
+  color: #261f17;
+  -webkit-app-region: no-drag;
+}
+
+.debug-menu-panel[hidden] {
+  display: none;
+}
+
+.debug-menu-item {
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: currentColor;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  text-align: left;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.debug-menu-item:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.debug-menu-item:active {
+  transform: translateY(1px);
+}
+
+.debug-menu-item-icon {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.window-button.close:hover {
+  background: #d94d3f;
+  color: #fffaf0;
+}
+
+:root[data-nav-text-style="white"] {
+  color: #fffaf0;
+}
+
+:root[data-nav-text-style="white"] .host-bar {
+  border-bottom-color: rgba(255, 250, 240, 0.12);
+}
+
+:root[data-nav-text-style="white"] .debug-menu-panel {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.window-icon {
+  display: block;
+  stroke: currentColor;
+  pointer-events: none;
+}

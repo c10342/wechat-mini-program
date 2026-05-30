@@ -1,0 +1,61 @@
+<view class="page home">
+  <view class="hero surface">
+    <text class="kicker">Electron Mini Program</text>
+    <text class="title">Mission Desk</text>
+    <text class="copy">独立 WebContents 页面栈 · Worker 逻辑层 · JS 小程序脚本</text>
+    <view class="metric-row">
+      <view class="metric">
+        <text class="metric-value">{{openCount}}</text>
+        <text class="metric-label">Open</text>
+      </view>
+      <view class="metric">
+        <text class="metric-value">{{doneCount}}</text>
+        <text class="metric-label">Done</text>
+      </view>
+      <view class="metric">
+        <text class="metric-value">{{priority}}</text>
+        <text class="metric-label">Focus</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel composer">
+    <text class="section-title">新任务</text>
+    <input value="{{draft}}" bindinput="handleInput" />
+    <view class="button-row">
+      <button bindtap="addTask">添加任务</button>
+      <button bindtap="saveDraft">保存草稿</button>
+      <button bindtap="showTip">Toast</button>
+    </view>
+  </view>
+
+  <view class="panel">
+    <text class="section-title">任务列表</text>
+    <view wx:if="{{tasks.length > 0}}">
+      <view wx:for="{{tasks}}" wx:key="id" class="task {{item.done ? 'is-done' : ''}}" data-id="{{item.id}}" bindtap="openTask">
+        <view class="task-main">
+          <text class="task-title">{{item.title}}</text>
+          <text class="task-meta">{{item.owner}} · {{item.status}}</text>
+        </view>
+        <text class="task-badge">{{item.points}} pts</text>
+      </view>
+    </view>
+    <view wx:else class="empty">
+      <text>暂无任务，先添加一个。</text>
+    </view>
+  </view>
+
+  <view class="panel">
+    <text class="section-title">容器能力</text>
+    <view class="capability-grid">
+      <view wx:for="{{capabilities}}" wx:key="id" class="capability" data-id="{{item.id}}" bindtap="selectCapability">
+        <text class="capability-title">{{item.name}}</text>
+        <text class="capability-copy">{{item.copy}}</text>
+      </view>
+    </view>
+    <view class="button-row">
+      <button bindtap="goLogs">打开 API 面板</button>
+      <button bindtap="resetTasks">重置示例</button>
+    </view>
+  </view>
+</view>

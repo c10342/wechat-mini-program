@@ -1,0 +1,12 @@
+{
+  "appId": "com.electron-mini-program.demo1",
+  "pages": ["pages/index/index", "pages/detail/detail", "pages/logs/logs"],
+  "window": {
+    "navigationBarTitleText": "demo1",
+    "navigationBarBackgroundColor": "#f6f3ea",
+    "backgroundColor": "#fffaf0"
+  },
+  "networkTimeout": {
+    "request": 10000
+  }
+}

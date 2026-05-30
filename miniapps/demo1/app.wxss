@@ -1,0 +1,41 @@
+.page {
+  min-height: 100vh;
+  padding: 34rpx;
+  background:
+    linear-gradient(90deg, rgba(38, 31, 23, 0.05) 1px, transparent 1px) 0 0 / 28rpx 28rpx,
+    var(--mini-page-background);
+}
+
+.panel {
+  padding: 26rpx;
+  border: 2rpx solid rgba(38, 31, 23, 0.2);
+  border-radius: 12rpx;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.surface {
+  border: 2rpx solid #261f17;
+  border-radius: 14rpx;
+  background: #fff;
+  box-shadow: 8rpx 8rpx 0 rgba(38, 31, 23, 0.12);
+}
+
+.section-title {
+  display: block;
+  margin-bottom: 12rpx;
+  color: #7a5b1b;
+  font-size: 24rpx;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18rpx;
+  margin-top: 24rpx;
+}
+
+.muted {
+  color: #6b6257;
+}

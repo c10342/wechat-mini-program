@@ -1,0 +1,17 @@
+<view class="page detail">
+  <view class="panel surface">
+    <text class="section-title">任务详情</text>
+    <text class="headline">{{title}}</text>
+    <text class="body">页面 ID：{{taskId}}</text>
+    <text class="body">本页是 navigateTo 创建的新 WebContents，返回首页后首页仍然保活。</text>
+    <view class="score">
+      <text class="score-value">{{localCount}}</text>
+      <text class="score-label">local interactions</text>
+    </view>
+    <view class="button-row">
+      <button bindtap="addLocal">本页 setData</button>
+      <button bindtap="openModal">Modal</button>
+      <button bindtap="back">navigateBack</button>
+    </view>
+  </view>
+</view>

@@ -1,6 +1,0 @@
-{
-  "navigationBarTitleText": "Home",
-  "usingComponents": {
-    "page-header": "/components/page-header"
-  }
-}

@@ -1,0 +1,45 @@
+.detail {
+  display: grid;
+  align-items: center;
+}
+
+.headline,
+.body {
+  display: block;
+}
+
+.headline {
+  font-size: 48rpx;
+  font-weight: 900;
+}
+
+.body {
+  margin-top: 16rpx;
+  color: #665d51;
+  line-height: 1.5;
+}
+
+.score {
+  margin-top: 24rpx;
+  padding: 22rpx;
+  border-radius: 10rpx;
+  background: #dff3e8;
+}
+
+.score-value,
+.score-label {
+  display: block;
+}
+
+.score-value {
+  font-size: 52rpx;
+  font-weight: 900;
+}
+
+.score-label {
+  margin-top: 4rpx;
+  color: #416152;
+  font-size: 22rpx;
+  font-weight: 800;
+  text-transform: uppercase;
+}

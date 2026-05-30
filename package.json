@@ -1,18 +1,42 @@
 {
-  "name": "mini-program",
+  "name": "electron-mini-program",
   "version": "1.0.0",
-  "main": "main.js",
-  "devDependencies": {
-    "electron": "^42.0.0",
-    "vite": "^8.0.0"
+  "main": "dist/electron/main/index.js",
+  "types": "dist/electron/main/container.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/electron/main/container.d.ts",
+      "require": "./dist/electron/main/container.js",
+      "default": "./dist/electron/main/container.js"
+    },
+    "./app": {
+      "types": "./dist/electron/main/index.d.ts",
+      "require": "./dist/electron/main/index.js",
+      "default": "./dist/electron/main/index.js"
+    }
   },
   "scripts": {
-    "build": "vite build",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build:renderer": "vite build",
+    "build": "npm run clean && npm run build:electron && npm run build:renderer",
     "dev": "npm run build && electron .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "npm run build && electron .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "acorn": "^8.16.0",
+    "electron": "^42.3.0",
+    "htmlparser2": "^12.0.0",
+    "lucide": "^1.17.0",
+    "postcss": "^8.5.15"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14"
+  }
 }

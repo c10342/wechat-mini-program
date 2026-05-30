@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mini Program Host</title>
+    <script type="module" src="/host.ts"></script>
+  </head>
+  <body>
+    <header class="host-bar">
+      <strong id="title-label" class="title-label">Mini Container</strong>
+      <div class="host-actions">
+        <div class="debug-menu" id="debug-menu">
+          <button class="window-button debug-menu-button" id="debug-menu-button" title="Debug" aria-label="Debug" aria-expanded="false" aria-haspopup="menu"></button>
+          <div class="debug-menu-panel" id="debug-menu-panel" role="menu" hidden>
+            <button class="debug-menu-item" id="open-devtools-button" role="menuitem" type="button">
+              <span class="debug-menu-item-icon" aria-hidden="true"></span>
+              <span>打开宿主控制台</span>
+            </button>
+            <button class="debug-menu-item" id="open-page-devtools-button" role="menuitem" type="button">
+              <span class="debug-menu-item-icon" aria-hidden="true"></span>
+              <span>打开当前页面控制台</span>
+            </button>
+          </div>
+        </div>
+        <button class="window-button" id="minimize-button" title="Minimize" aria-label="Minimize"></button>
+        <button class="window-button" id="maximize-button" title="Maximize" aria-label="Maximize"></button>
+        <button class="window-button close" id="close-button" title="Close" aria-label="Close"></button>
+      </div>
+    </header>
+  </body>
+</html>

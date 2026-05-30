@@ -1,0 +1,149 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.hero {
+  padding: 34rpx;
+  background: #f7df7d;
+}
+
+.kicker,
+.title,
+.copy,
+.metric-value,
+.metric-label {
+  display: block;
+}
+
+.kicker {
+  color: #2f8b68;
+  font-size: 22rpx;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.title {
+  margin-top: 10rpx;
+  font-size: 64rpx;
+  line-height: 1.04;
+  font-weight: 900;
+}
+
+.copy {
+  margin-top: 18rpx;
+  color: #665d51;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+.metric-row {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 28rpx;
+}
+
+.metric {
+  flex: 1;
+  padding: 16rpx;
+  border: 2rpx solid rgba(38, 31, 23, 0.22);
+  border-radius: 10rpx;
+  background: rgba(255, 250, 240, 0.7);
+}
+
+.metric-value {
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.metric-label {
+  margin-top: 4rpx;
+  color: #6b6257;
+  font-size: 20rpx;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.composer {
+  background: #e8f4ef;
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-top: 14rpx;
+  padding: 20rpx;
+  border: 2rpx solid rgba(38, 31, 23, 0.12);
+  border-radius: 10rpx;
+  background: #fff;
+}
+
+.task-main {
+  min-width: 0;
+}
+
+.task-title,
+.task-meta,
+.task-badge {
+  display: block;
+}
+
+.task-title {
+  font-weight: 900;
+}
+
+.task-meta {
+  margin-top: 6rpx;
+  color: #756b5d;
+  font-size: 24rpx;
+}
+
+.task-badge {
+  flex: 0 0 auto;
+  padding: 8rpx 12rpx;
+  border-radius: 999rpx;
+  background: #261f17;
+  color: #fffaf0;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.is-done {
+  opacity: 0.62;
+}
+
+.empty {
+  padding: 26rpx;
+  border: 2rpx dashed rgba(38, 31, 23, 0.22);
+  color: #756b5d;
+}
+
+.capability-grid {
+  display: grid;
+  gap: 14rpx;
+}
+
+.capability {
+  padding: 18rpx;
+  border-left: 8rpx solid #5abf90;
+  background: #fff;
+}
+
+.capability-title,
+.capability-copy {
+  display: block;
+}
+
+.capability-title {
+  font-weight: 900;
+}
+
+.capability-copy {
+  margin-top: 6rpx;
+  color: #756b5d;
+  font-size: 24rpx;
+  line-height: 1.45;
+}

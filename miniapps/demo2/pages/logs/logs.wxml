@@ -1,0 +1,15 @@
+<view class="page logs">
+  <view class="panel surface">
+    <text class="section-title">API 面板</text>
+    <text class="headline">Storage / SystemInfo / Routing</text>
+    <text class="body">草稿：{{draft}}</text>
+    <text class="body">系统：{{system}}</text>
+    <text class="body">请求：{{requestState}}</text>
+    <view class="button-row">
+      <button bindtap="readDraft">读取存储</button>
+      <button bindtap="readSystem">系统信息</button>
+      <button bindtap="fakeRequest">网络请求</button>
+      <button bindtap="home">回首页</button>
+    </view>
+  </view>
+</view>
