@@ -1,0 +1,45 @@
+.task {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  margin-top: 14rpx;
+  padding: 20rpx;
+  border: 2rpx solid rgba(38, 31, 23, 0.12);
+  border-radius: 10rpx;
+  background: #fff;
+}
+
+.task-main {
+  min-width: 0;
+}
+
+.task-title,
+.task-meta,
+.task-badge {
+  display: block;
+}
+
+.task-title {
+  font-weight: 900;
+}
+
+.task-meta {
+  margin-top: 6rpx;
+  color: #756b5d;
+  font-size: 24rpx;
+}
+
+.task-badge {
+  flex: 0 0 auto;
+  padding: 8rpx 12rpx;
+  border-radius: 999rpx;
+  background: #261f17;
+  color: #fffaf0;
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.is-done {
+  opacity: 0.62;
+}

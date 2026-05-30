@@ -1,5 +1,5 @@
 import "./page.css";
-import type { MiniData, MiniDomEvent, PageAssets, PageInboundMessage, RouteRecord } from "../shared/types";
+import type { ComponentAssets, ComponentSnapshot, MiniData, MiniDomEvent, PageAssets, PageInboundMessage, RouteRecord } from "../shared/types";
 
 const appRoot = document.querySelector<HTMLDivElement>("#app")!;
 const toast = document.querySelector<HTMLDivElement>("#toast")!;
@@ -8,6 +8,8 @@ const loading = document.querySelector<HTMLDivElement>("#loading")!;
 let pageId = window.miniHost.pageId;
 let route: RouteRecord | null = null;
 let assets: PageAssets | null = null;
+let componentAssets: Record<string, ComponentAssets> = {};
+let componentState: Record<string, ComponentSnapshot> = {};
 let data: MiniData = {};
 let toastTimer = 0;
 
@@ -44,12 +46,12 @@ function isTruthyExpression(value: string | null, scope: MiniData): boolean {
   return Boolean(evalInScope(value, scope));
 }
 
-function renderChildren(source: ParentNode, scope: MiniData): Node[] {
+function renderChildren(source: ParentNode, scope: MiniData, pathPrefix = "root", componentId?: string): Node[] {
   const nodes: Node[] = [];
   let conditionalMatched = false;
   let inConditionalChain = false;
 
-  source.childNodes.forEach((child) => {
+  source.childNodes.forEach((child, childIndex) => {
     if (child.nodeType === Node.TEXT_NODE) {
       const text = interpolate(child.textContent ?? "", scope);
       if (text.trim()) {
@@ -83,6 +85,7 @@ function renderChildren(source: ParentNode, scope: MiniData): Node[] {
 
     if (!shouldRender) return;
 
+    const currentPath = `${pathPrefix}.${childIndex}`;
     const forExpr = child.getAttribute("wx:for");
     if (forExpr) {
       // 渲染 wx:for 时复用同一个元素模板，并把 item/index 注入作用域。
@@ -92,14 +95,14 @@ function renderChildren(source: ParentNode, scope: MiniData): Node[] {
         const indexName = child.getAttribute("wx:for-index") || "index";
         list.forEach((item, index) => {
           const childScope = { ...scope, [itemName]: item, [indexName]: index };
-          const rendered = renderElement(child, childScope);
+          const rendered = renderElement(child, childScope, `${currentPath}:${index}`, componentId);
           if (rendered) nodes.push(rendered);
         });
       }
       return;
     }
 
-    const rendered = renderElement(child, scope);
+    const rendered = renderElement(child, scope, currentPath, componentId);
     if (rendered) nodes.push(rendered);
   });
 
@@ -114,8 +117,9 @@ function mapTag(tagName: string): keyof HTMLElementTagNameMap {
   return "div";
 }
 
-function renderElement(source: Element, scope: MiniData): HTMLElement | null {
+function renderElement(source: Element, scope: MiniData, renderPath: string, componentId?: string): HTMLElement | null {
   const miniTag = source.tagName.toLowerCase();
+  if (!componentId && assets?.components[miniTag]) return renderComponent(source, renderPath);
   const element = document.createElement(mapTag(miniTag));
   element.classList.add(`mini-${miniTag}`);
 
@@ -130,23 +134,43 @@ function renderElement(source: Element, scope: MiniData): HTMLElement | null {
     else if (name === "scroll-y") element.classList.add("is-scroll-y");
   }
 
-  bindEvent(source, element, "bindtap", "tap", "click");
-  bindEvent(source, element, "catchtap", "tap", "click");
-  bindEvent(source, element, "bindinput", "input", "input");
-  bindEvent(source, element, "bindchange", "change", "change");
+  bindEvent(source, element, "bindtap", "tap", "click", componentId);
+  bindEvent(source, element, "catchtap", "tap", "click", componentId);
+  bindEvent(source, element, "bindinput", "input", "input", componentId);
+  bindEvent(source, element, "bindchange", "change", "change", componentId);
 
   if (element instanceof HTMLInputElement) {
     element.addEventListener("input", () => {
       element.setAttribute("value", element.value);
     });
   } else {
-    element.append(...renderChildren(source, scope));
+    element.append(...renderChildren(source, scope, renderPath, componentId));
   }
 
   return element;
 }
 
-function bindEvent(source: Element, element: HTMLElement, attr: string, miniType: string, domType: keyof HTMLElementEventMap): void {
+function renderComponent(source: Element, renderPath: string): HTMLElement {
+  const tagName = source.tagName.toLowerCase();
+  const componentPath = assets?.components[tagName];
+  const id = `${pageId}:component:${renderPath}`;
+  const wrapper = document.createElement("div");
+  wrapper.classList.add("mini-component", `mini-component-${tagName}`);
+  wrapper.dataset.componentId = id;
+  if (!componentPath) return wrapper;
+
+  const snapshot = componentState[id];
+  const component = componentAssets[componentPath];
+  if (!snapshot || !component) return wrapper;
+
+  const template = document.createElement("template");
+  template.innerHTML = component.wxml;
+  const componentScope = { ...snapshot.properties, ...snapshot.data };
+  wrapper.append(...renderChildren(template.content, componentScope, `component:${id}`, id));
+  return wrapper;
+}
+
+function bindEvent(source: Element, element: HTMLElement, attr: string, miniType: string, domType: keyof HTMLElementEventMap, componentId?: string): void {
   const handler = source.getAttribute(attr);
   if (!handler) return;
   element.addEventListener(domType, (event) => {
@@ -157,7 +181,7 @@ function bindEvent(source: Element, element: HTMLElement, attr: string, miniType
       if (item.name.startsWith("data-")) dataset[item.name.slice(5)] = item.value;
     }
     const detail = event instanceof InputEvent && event.target instanceof HTMLInputElement ? { value: event.target.value } : undefined;
-    const miniEvent: MiniDomEvent = { pageId, type: miniType, handler, dataset, detail };
+    const miniEvent: MiniDomEvent = { pageId, componentId, type: miniType, handler, dataset, detail };
     window.miniHost.send({ type: "dom-event", event: miniEvent });
   });
 }
@@ -169,7 +193,8 @@ function applyPageCss(css: string): void {
     style.id = "mini-page-style";
     document.head.append(style);
   }
-  style.textContent = css;
+  const componentCss = assets ? Object.values(assets.components).map((path) => componentAssets[path]?.wxss ?? "").join("\n") : "";
+  style.textContent = `${css}\n${componentCss}`;
 }
 
 function render(): void {
@@ -208,6 +233,8 @@ function handleMessage(message: PageInboundMessage): void {
     pageId = message.pageId;
     route = message.route;
     assets = message.assets;
+    componentAssets = message.components;
+    componentState = message.componentState ?? {};
     data = message.data;
     document.title = route.title;
     applyBackgroundColor(message.backgroundColor);
@@ -216,6 +243,7 @@ function handleMessage(message: PageInboundMessage): void {
   }
   if (message.type === "set-data") {
     data = message.data;
+    componentState = message.componentState ?? {};
     render();
   }
   if (message.type === "host-ui" && message.name === "toast") showToast(message.payload);

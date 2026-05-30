@@ -24,6 +24,7 @@ export interface MiniAppConfig {
 export interface PageConfig {
   navigationBarTitleText?: string;
   backgroundColor?: string;
+  usingComponents?: Record<string, string>;
 }
 
 export interface RouteRecord {
@@ -39,19 +40,40 @@ export interface PageAssets {
   config: PageConfig;
   wxml: string;
   wxss: string;
+  components: Record<string, string>;
+}
+
+export interface ComponentConfig {
+  component?: boolean;
+}
+
+export interface ComponentAssets {
+  path: string;
+  config: ComponentConfig;
+  wxml: string;
+  wxss: string;
 }
 
 export interface MiniAppBundle {
   appConfig: MiniAppConfig;
   appScript: string;
   pages: Record<string, PageAssets & { script: string }>;
+  components: Record<string, ComponentAssets & { script: string }>;
   modules: Record<string, string>;
+}
+
+export interface ComponentSnapshot {
+  id: string;
+  path: string;
+  properties: MiniData;
+  data: MiniData;
 }
 
 export interface SetDataPatch {
   pageId: string;
   data: MiniData;
   patch: MiniData;
+  components?: Record<string, ComponentSnapshot>;
 }
 
 export interface HostConfig {
@@ -63,6 +85,7 @@ export interface HostConfig {
 
 export interface MiniDomEvent {
   pageId: string;
+  componentId?: string;
   type: string;
   handler: string;
   dataset: Record<string, string>;
@@ -121,8 +144,17 @@ export type WorkerOutboundMessage =
   | { type: "log"; level: ConsoleLogLevel; args: string[]; pageId?: string };
 
 export type PageInboundMessage =
-  | { type: "init"; pageId: string; route: RouteRecord; assets: PageAssets; data: MiniData; backgroundColor?: string }
-  | { type: "set-data"; data: MiniData; patch: MiniData }
+  | {
+      type: "init";
+      pageId: string;
+      route: RouteRecord;
+      assets: PageAssets;
+      components: Record<string, ComponentAssets>;
+      data: MiniData;
+      componentState?: Record<string, ComponentSnapshot>;
+      backgroundColor?: string;
+    }
+  | { type: "set-data"; data: MiniData; patch: MiniData; componentState?: Record<string, ComponentSnapshot> }
   | { type: "host-ui"; name: "toast" | "loading"; payload?: Record<string, unknown> };
 
 export type PageOutboundMessage =

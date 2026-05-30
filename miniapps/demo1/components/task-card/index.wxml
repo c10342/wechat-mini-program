@@ -1,0 +1,7 @@
+<view class="task {{done ? 'is-done' : ''}}" bindtap="handleTap">
+  <view class="task-main">
+    <text class="task-title">{{title}}</text>
+    <text class="task-meta">{{owner}} - {{status}} - tapped {{tapCount}}</text>
+  </view>
+  <text class="task-badge">{{points}} pts</text>
+</view>

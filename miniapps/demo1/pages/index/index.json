@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "Mission Desk"
+  "navigationBarTitleText": "Mission Desk",
+  "usingComponents": {
+    "task-card": "/components/task-card/index"
+  }
 }

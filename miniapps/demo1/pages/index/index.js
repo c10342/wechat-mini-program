@@ -70,7 +70,7 @@ Page({
     
   },
   openTask(event) {
-    var taskId = event.currentTarget.dataset.id;
+    var taskId = event.detail && event.detail.id ? event.detail.id : event.currentTarget.dataset.id;
     wx.navigateTo({ url: "pages/detail/detail?id=" + taskId });
   },
   goLogs() {

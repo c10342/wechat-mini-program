@@ -32,13 +32,7 @@
   <view class="panel">
     <text class="section-title">任务列表</text>
     <view wx:if="{{tasks.length > 0}}">
-      <view wx:for="{{tasks}}" wx:key="id" class="task {{item.done ? 'is-done' : ''}}" data-id="{{item.id}}" bindtap="openTask">
-        <view class="task-main">
-          <text class="task-title">{{item.title}}</text>
-          <text class="task-meta">{{item.owner}} · {{item.status}}</text>
-        </view>
-        <text class="task-badge">{{item.points}} pts</text>
-      </view>
+      <task-card wx:for="{{tasks}}" wx:key="id" id="{{item.id}}" title="{{item.title}}" owner="{{item.owner}}" status="{{item.status}}" points="{{item.points}}" done="{{item.done}}" bindselect="openTask" />
     </view>
     <view wx:else class="empty">
       <text>暂无任务，先添加一个。</text>

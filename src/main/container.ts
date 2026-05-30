@@ -200,7 +200,12 @@ export class MiniProgramContainer {
         const page = this.pageStack.find((item) => item.route.id === message.patch.pageId);
         if (page) {
           page.data = message.patch.data;
-          this.sendToPage(page.route.id, { type: "set-data", data: message.patch.data, patch: message.patch.patch });
+          this.sendToPage(page.route.id, {
+            type: "set-data",
+            data: message.patch.data,
+            patch: message.patch.patch,
+            componentState: message.patch.components
+          });
         }
       }
       if (message.type === "route") await this.handleRoute(message.action);
@@ -396,6 +401,7 @@ export class MiniProgramContainer {
       pageId: page.route.id,
       route: page.route,
       assets: page.assets,
+      components: this.requireBundle().components,
       data: {},
       backgroundColor: page.assets.config.backgroundColor ?? this.requireBundle().appConfig.window?.backgroundColor
     });
