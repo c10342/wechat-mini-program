@@ -1,4 +1,5 @@
 import { parentPort } from "node:worker_threads";
+import { posix } from "node:path";
 import { inspect } from "node:util";
 import vm from "node:vm";
 import type {
@@ -39,11 +40,16 @@ interface PageInstance extends PageDefinition {
   setData(patch: MiniData, callback?: () => void): void;
 }
 
+interface MiniModule {
+  exports: unknown;
+}
+
 let bundle: MiniAppBundle | null = null;
 let appDefinition: Record<string, unknown> = {};
 const pageDefinitions = new Map<string, PageDefinition>();
 const pageInstances = new Map<string, PageInstance>();
 const pendingApis = new Map<string, PendingApi>();
+const moduleCache = new Map<string, MiniModule>();
 let apiSeq = 0;
 let currentRouteForEval = "";
 let currentLogPageId: string | undefined;
@@ -162,8 +168,8 @@ function createWxApi() {
   };
 }
 
-function evaluateMiniScript(code: string, filename: string): void {
-  // 每个脚本都在受限 VM 上下文里注册 App/Page 定义。
+function createMiniContext(filename: string): vm.Context {
+  // Each script runs in a restricted VM context.
   const context = vm.createContext({
     console: miniConsole,
     setTimeout: miniSetTimeout,
@@ -174,18 +180,86 @@ function evaluateMiniScript(code: string, filename: string): void {
     Page(definition: PageDefinition) {
       pageDefinitions.set(currentRouteForEval, definition);
     },
+    require: createMiniRequire(filename),
     wx: createWxApi()
   });
-  vm.runInContext(code, context, { filename, timeout: 1000 });
+  return context;
+}
+
+function normalizeModulePath(modulePath: string): string {
+  return posix.normalize(modulePath.replace(/\\/g, "/"));
+}
+
+function assertInsideMiniApp(modulePath: string, request: string, parentFilename: string): void {
+  if (modulePath === ".." || modulePath.startsWith("../") || posix.isAbsolute(modulePath)) {
+    throw new Error(`Cannot require '${request}' from '${parentFilename}': module must stay inside the mini program root`);
+  }
+}
+
+function resolveMiniModule(request: string, parentFilename: string): string {
+  if (typeof request !== "string") {
+    throw new Error(`Cannot require non-string module from '${parentFilename}'`);
+  }
+  if (!request.startsWith("./") && !request.startsWith("../")) {
+    throw new Error(`Cannot require '${request}' from '${parentFilename}': only relative .js modules are supported`);
+  }
+  if (!bundle) throw new Error("Mini program bundle is not initialized");
+
+  const parentDirectory = posix.dirname(normalizeModulePath(parentFilename));
+  const requestedPath = normalizeModulePath(posix.join(parentDirectory, request));
+  assertInsideMiniApp(requestedPath, request, parentFilename);
+
+  const candidates = request.endsWith(".js")
+    ? [requestedPath]
+    : [`${requestedPath}.js`, posix.join(requestedPath, "index.js")];
+
+  for (const candidate of candidates) {
+    const modulePath = normalizeModulePath(candidate);
+    assertInsideMiniApp(modulePath, request, parentFilename);
+    if (bundle.modules[modulePath] !== undefined) return modulePath;
+  }
+
+  throw new Error(`Cannot find module '${request}' from '${parentFilename}'`);
+}
+
+function createMiniRequire(parentFilename: string): (request: string) => unknown {
+  return (request: string) => executeMiniModule(resolveMiniModule(request, parentFilename));
+}
+
+function executeMiniModule(modulePath: string): unknown {
+  const cached = moduleCache.get(modulePath);
+  if (cached) return cached.exports;
+  if (!bundle) throw new Error("Mini program bundle is not initialized");
+
+  const source = bundle.modules[modulePath];
+  if (source === undefined) throw new Error(`Cannot find module '${modulePath}'`);
+
+  const module: MiniModule = { exports: {} };
+  moduleCache.set(modulePath, module);
+  evaluateMiniScript(source, modulePath, module);
+  return module.exports;
+}
+
+function evaluateMiniScript(code: string, filename: string, module: MiniModule = { exports: {} }): unknown {
+  const context = createMiniContext(filename);
+  const wrapper = vm.runInContext(`(function(require, module, exports) {\n${code}\n})`, context, {
+    filename,
+    timeout: 1000
+  }) as (require: (request: string) => unknown, module: MiniModule, exports: unknown) => void;
+  wrapper(createMiniRequire(filename), module, module.exports);
+  return module.exports;
 }
 
 function initRuntime(nextBundle: MiniAppBundle): void {
   bundle = nextBundle;
-  evaluateMiniScript(nextBundle.appScript, "app.ts");
-  // 执行页面脚本时，Page() 会按 currentRouteForEval 记录对应页面定义。
+  appDefinition = {};
+  pageDefinitions.clear();
+  moduleCache.clear();
+  evaluateMiniScript(nextBundle.appScript, "app.js");
+  // Page() registers each page definition against the route currently being evaluated.
   for (const [route, page] of Object.entries(nextBundle.pages)) {
     currentRouteForEval = route;
-    evaluateMiniScript(page.script, `${route}.ts`);
+    evaluateMiniScript(page.script, `${route}.js`);
   }
   (appDefinition.onLaunch as (() => void) | undefined)?.call(appDefinition);
   (appDefinition.onShow as (() => void) | undefined)?.call(appDefinition);

@@ -1,3 +1,5 @@
+const utils = require('../../utils')
+
 Page({
   data: {
     taskId: "unknown",
@@ -9,6 +11,8 @@ Page({
       taskId: query.id || "unknown",
       title: "Inspect " + (query.id || "task")
     });
+    console.log(utils.getCount());
+    
   },
   addLocal() {
     this.setData({ localCount: this.data.localCount + 1 });

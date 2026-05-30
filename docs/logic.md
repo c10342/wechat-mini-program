@@ -29,13 +29,13 @@
 | `console` | 支持 | 输出日志。 |
 | `setTimeout` | 支持 | 定时器。 |
 | `clearTimeout` | 支持 | 清理定时器。 |
+| `require` | 支持受控子集 | 仅支持小程序根目录内的相对 `.js` 模块。 |
 
 当前不暴露：
 
 - DOM
 - `window`
 - `document`
-- `require`
 - `process`
 - Node 文件系统能力
 

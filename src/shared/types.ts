@@ -45,6 +45,7 @@ export interface MiniAppBundle {
   appConfig: MiniAppConfig;
   appScript: string;
   pages: Record<string, PageAssets & { script: string }>;
+  modules: Record<string, string>;
 }
 
 export interface SetDataPatch {

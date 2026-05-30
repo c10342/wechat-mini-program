@@ -1,3 +1,5 @@
+const utils = require('../../utils')
+
 Page({
   data: {
     draft: "Review container runtime",
@@ -64,6 +66,7 @@ Page({
   showTip() {
     wx.showToast({ title: "页面运行在独立 WebContents" });
     console.log('showToast');
+    utils.setCount()
     
   },
   openTask(event) {

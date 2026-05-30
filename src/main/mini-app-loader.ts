@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { readdir, readFile } from "node:fs/promises";
+import { join, relative, sep } from "node:path";
 import { parse as parseScript } from "acorn";
 import { parseDocument } from "htmlparser2";
 import postcss, { Declaration } from "postcss";
@@ -46,12 +46,34 @@ function validateScript(source: string, filename: string): void {
   parseScript(source, { ecmaVersion: "latest", sourceType: "script" });
 }
 
+function toModulePath(filePath: string, appRoot: string): string {
+  return relative(appRoot, filePath).split(sep).join("/");
+}
+
+async function collectJsModules(appRoot: string, directory = appRoot, modules: Record<string, string> = {}): Promise<Record<string, string>> {
+  const entries = await readdir(directory, { withFileTypes: true });
+  for (const entry of entries) {
+    const filePath = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      await collectJsModules(appRoot, filePath, modules);
+      continue;
+    }
+    if (!entry.isFile() || !entry.name.endsWith(".js")) continue;
+    const modulePath = toModulePath(filePath, appRoot);
+    const source = await readRequired(filePath);
+    validateScript(source, modulePath);
+    modules[modulePath] = source;
+  }
+  return modules;
+}
+
 export async function loadMiniApp(appRoot: string): Promise<MiniAppBundle> {
   const appConfig = await readJson<MiniAppConfig>(join(appRoot, "app.json"));
   const appScript = await readRequired(join(appRoot, "app.js"));
   validateScript(appScript, "app.js");
   const appWxss = transformWxss(await readOptional(join(appRoot, "app.wxss")));
   const pages: MiniAppBundle["pages"] = {};
+  const modules = await collectJsModules(appRoot);
 
   for (const route of appConfig.pages) {
     const pageRoot = join(appRoot, route);
@@ -71,5 +93,5 @@ export async function loadMiniApp(appRoot: string): Promise<MiniAppBundle> {
     };
   }
 
-  return { appConfig, appScript, pages };
+  return { appConfig, appScript, pages, modules };
 }
