@@ -123,8 +123,8 @@ export class MiniProgramContainer {
     const backgroundColor = this.bundle.appConfig.window?.backgroundColor;
     if (backgroundColor) this.window.setBackgroundColor(backgroundColor);
     this.bindIpc();
-    this.createWorker();
     await this.createHostView();
+    this.createWorker();
     this.window.on("resize", this.layoutViews);
     this.window.on("maximize", this.sendWindowState);
     this.window.on("unmaximize", this.sendWindowState);
@@ -208,7 +208,7 @@ export class MiniProgramContainer {
         const response = await this.handleHostApi(message.request);
         this.sendToWorker({ type: "api-response", response });
       }
-      if (message.type === "log") console[message.level](`[mini:${message.level}] ${message.message}`);
+      if (message.type === "log") this.emitMiniConsoleLog(message);
     });
     this.sendToWorker({ type: "init", bundle: this.requireBundle() });
   }
@@ -278,6 +278,21 @@ export class MiniProgramContainer {
     const page = this.pageStack.find((item) => item.route.id === pageId);
     if (!page || page.view.webContents.isDestroyed()) return;
     page.view.webContents.send("mini:message", message);
+  }
+
+  private emitMiniConsoleLog(message: Extract<WorkerOutboundMessage, { type: "log" }>): void {
+    const page = message.pageId ? this.pageStack.find((item) => item.route.id === message.pageId) : undefined;
+    const label = page?.route.route ?? message.pageId ?? "app";
+    const args = [`[${label}]`, ...message.args];
+    this.emitToDevToolsConsole(this.hostView?.webContents, message.level, args);
+    if (!message.pageId) return;
+    this.emitToDevToolsConsole(page?.view.webContents, message.level, args);
+  }
+
+  private emitToDevToolsConsole(webContents: Electron.WebContents | undefined, level: Extract<WorkerOutboundMessage, { type: "log" }>["level"], args: string[]): void {
+    if (!webContents || webContents.isDestroyed()) return;
+    const script = `console[${JSON.stringify(level)}](...${JSON.stringify(args)})`;
+    webContents.executeJavaScript(script).catch(() => undefined);
   }
 
   private topPage(): PageViewRecord | undefined {

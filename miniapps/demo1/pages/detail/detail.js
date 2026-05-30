@@ -18,6 +18,8 @@ Page({
       title: "独立页面",
       content: "这个 modal 由主进程代理执行。"
     });
+    console.log('showModal');
+    
   },
   back() {
     wx.navigateBack();

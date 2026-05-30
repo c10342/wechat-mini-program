@@ -101,6 +101,8 @@ export interface WxApiResponse {
   error?: string;
 }
 
+export type ConsoleLogLevel = "log" | "info" | "warn" | "error" | "debug";
+
 export type WorkerInboundMessage =
   | { type: "init"; bundle: MiniAppBundle }
   | { type: "create-page"; pageId: string; route: string; query: Record<string, string> }
@@ -115,7 +117,7 @@ export type WorkerOutboundMessage =
   | { type: "page-data"; patch: SetDataPatch }
   | { type: "route"; action: RouteAction }
   | { type: "host-api"; request: WxApiRequest }
-  | { type: "log"; level: "info" | "warn" | "error"; message: string };
+  | { type: "log"; level: ConsoleLogLevel; args: string[]; pageId?: string };
 
 export type PageInboundMessage =
   | { type: "init"; pageId: string; route: RouteRecord; assets: PageAssets; data: MiniData; backgroundColor?: string }

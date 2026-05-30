@@ -1,6 +1,8 @@
 import { parentPort } from "node:worker_threads";
+import { inspect } from "node:util";
 import vm from "node:vm";
 import type {
+  ConsoleLogLevel,
   MiniAppBundle,
   MiniData,
   MiniDomEvent,
@@ -13,6 +15,11 @@ import type {
 
 type MiniCallback = (result?: unknown) => void;
 type ApiOptions = Record<string, unknown> & { success?: MiniCallback; fail?: MiniCallback; complete?: MiniCallback };
+
+interface PendingApi {
+  options: ApiOptions;
+  pageId?: string;
+}
 
 interface PageDefinition {
   data?: MiniData;
@@ -36,9 +43,10 @@ let bundle: MiniAppBundle | null = null;
 let appDefinition: Record<string, unknown> = {};
 const pageDefinitions = new Map<string, PageDefinition>();
 const pageInstances = new Map<string, PageInstance>();
-const pendingApis = new Map<string, ApiOptions>();
+const pendingApis = new Map<string, PendingApi>();
 let apiSeq = 0;
 let currentRouteForEval = "";
+let currentLogPageId: string | undefined;
 
 function post(message: WorkerOutboundMessage): void {
   parentPort?.postMessage(message);
@@ -46,6 +54,60 @@ function post(message: WorkerOutboundMessage): void {
 
 function cloneData<T>(value: T): T {
   return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function withLogPage<T>(pageId: string | undefined, callback: () => T): T {
+  const previous = currentLogPageId;
+  currentLogPageId = pageId;
+  try {
+    return callback();
+  } finally {
+    currentLogPageId = previous;
+  }
+}
+
+function serializeConsoleArg(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value instanceof Error) return value.stack ?? value.message;
+  try {
+    return inspect(value, { depth: 5, colors: false, maxArrayLength: 100, breakLength: 120 });
+  } catch {
+    return String(value);
+  }
+}
+
+function postLog(level: ConsoleLogLevel, args: unknown[], pageId = currentLogPageId): void {
+  post({ type: "log", level, args: args.map(serializeConsoleArg), pageId });
+}
+
+const miniConsole: Pick<Console, ConsoleLogLevel> = {
+  log: (...args: unknown[]) => postLog("log", args),
+  info: (...args: unknown[]) => postLog("info", args),
+  warn: (...args: unknown[]) => postLog("warn", args),
+  error: (...args: unknown[]) => postLog("error", args),
+  debug: (...args: unknown[]) => postLog("debug", args)
+};
+
+function miniSetTimeout(callback: (...args: unknown[]) => void, timeout?: number, ...args: unknown[]): ReturnType<typeof setTimeout> {
+  const pageId = currentLogPageId;
+  return setTimeout(
+    () =>
+      withLogPage(pageId, () => {
+        try {
+          callback(...args);
+        } catch (error) {
+          postLog("error", [error], pageId);
+        }
+      }),
+    timeout
+  );
+}
+
+function messageLogPageId(message: WorkerInboundMessage): string | undefined {
+  if ("pageId" in message) return message.pageId;
+  if (message.type === "dom-event") return message.event.pageId;
+  if (message.type === "api-response") return pendingApis.get(message.response.id)?.pageId;
+  return undefined;
 }
 
 function setByPath(target: MiniData, path: string, value: unknown): void {
@@ -72,7 +134,7 @@ function createWxApi() {
   const callHost = (name: WxApiRequest["name"], options: ApiOptions = {}) => {
     // 由宿主实现的 wx API 都是异步的，主进程返回后再恢复回调。
     const id = `api-${++apiSeq}`;
-    pendingApis.set(id, options);
+    pendingApis.set(id, { options, pageId: currentLogPageId });
     const { success: _success, fail: _fail, complete: _complete, ...payload } = options;
     post({ type: "host-api", request: { id, name, payload } });
   };
@@ -103,8 +165,8 @@ function createWxApi() {
 function evaluateMiniScript(code: string, filename: string): void {
   // 每个脚本都在受限 VM 上下文里注册 App/Page 定义。
   const context = vm.createContext({
-    console,
-    setTimeout,
+    console: miniConsole,
+    setTimeout: miniSetTimeout,
     clearTimeout,
     App(definition: Record<string, unknown>) {
       appDefinition = definition;
@@ -141,10 +203,10 @@ function createPage(pageId: string, route: string, query: Record<string, string>
     // Worker 持有页面权威数据，并把完整数据和本次 patch 一起发给视图层。
     mergeData(instance.data, patch);
     post({ type: "page-data", patch: { pageId, data: cloneData(instance.data), patch: cloneData(patch) } });
-    callback?.();
+    withLogPage(pageId, () => callback?.());
   };
   pageInstances.set(pageId, instance);
-  instance.onLoad?.call(instance, query);
+  withLogPage(pageId, () => instance.onLoad?.call(instance, query));
   post({ type: "page-data", patch: { pageId, data: cloneData(instance.data), patch: cloneData(instance.data) } });
 }
 
@@ -152,22 +214,29 @@ function handleEvent(event: MiniDomEvent): void {
   const instance = pageInstances.get(event.pageId);
   const handler = instance?.[event.handler];
   if (typeof handler === "function") {
-    handler.call(instance, {
+    withLogPage(event.pageId, () => handler.call(instance, {
       type: event.type,
       currentTarget: { dataset: event.dataset },
       target: { dataset: event.dataset },
       detail: event.detail
-    });
+    }));
   }
 }
 
 function handleApiResponse(response: WxApiResponse): void {
-  const options = pendingApis.get(response.id);
-  if (!options) return;
+  const pending = pendingApis.get(response.id);
+  if (!pending) return;
   pendingApis.delete(response.id);
-  if (response.ok) options.success?.(response.data);
-  else options.fail?.({ errMsg: response.error ?? "api failed" });
-  options.complete?.(response.ok ? response.data : { errMsg: response.error ?? "api failed" });
+  const { options, pageId } = pending;
+  withLogPage(pageId, () => {
+    try {
+      if (response.ok) options.success?.(response.data);
+      else options.fail?.({ errMsg: response.error ?? "api failed" });
+      options.complete?.(response.ok ? response.data : { errMsg: response.error ?? "api failed" });
+    } catch (error) {
+      postLog("error", [error], pageId);
+    }
+  });
 }
 
 parentPort?.on("message", (message: WorkerInboundMessage) => {
@@ -176,21 +245,21 @@ parentPort?.on("message", (message: WorkerInboundMessage) => {
     if (message.type === "create-page") createPage(message.pageId, message.route, message.query);
     if (message.type === "show-page") {
       const instance = pageInstances.get(message.pageId);
-      instance?.onShow?.();
+      withLogPage(message.pageId, () => instance?.onShow?.());
       // onReady 对每个页面实例只执行一次，即使页面被隐藏后再次展示。
       if (instance && !instance.__ready) {
         instance.__ready = true;
-        instance.onReady?.();
+        withLogPage(message.pageId, () => instance.onReady?.());
       }
     }
-    if (message.type === "hide-page") pageInstances.get(message.pageId)?.onHide?.();
+    if (message.type === "hide-page") withLogPage(message.pageId, () => pageInstances.get(message.pageId)?.onHide?.());
     if (message.type === "unload-page") {
-      pageInstances.get(message.pageId)?.onUnload?.();
+      withLogPage(message.pageId, () => pageInstances.get(message.pageId)?.onUnload?.());
       pageInstances.delete(message.pageId);
     }
     if (message.type === "dom-event") handleEvent(message.event);
     if (message.type === "api-response") handleApiResponse(message.response);
   } catch (error) {
-    post({ type: "log", level: "error", message: error instanceof Error ? error.stack ?? error.message : String(error) });
+    postLog("error", [error], messageLogPageId(message));
   }
 });
