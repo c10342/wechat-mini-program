@@ -119,7 +119,7 @@ function mapTag(tagName: string): keyof HTMLElementTagNameMap {
 
 function renderElement(source: Element, scope: MiniData, renderPath: string, componentId?: string): HTMLElement | null {
   const miniTag = source.tagName.toLowerCase();
-  if (!componentId && assets?.components[miniTag]) return renderComponent(source, renderPath);
+  if (!componentId && assets?.components[miniTag]) return renderComponent(source, scope, renderPath);
   const element = document.createElement(mapTag(miniTag));
   element.classList.add(`mini-${miniTag}`);
 
@@ -150,24 +150,48 @@ function renderElement(source: Element, scope: MiniData, renderPath: string, com
   return element;
 }
 
-function renderComponent(source: Element, renderPath: string): HTMLElement {
+function isValidCustomElementName(tagName: string): boolean {
+  return /^[a-z][.0-9_a-z]*-[\-.0-9_a-z]*$/.test(tagName);
+}
+
+function ensureCustomElement(tagName: string): void {
+  if (!isValidCustomElementName(tagName) || customElements.get(tagName)) return;
+  customElements.define(tagName, class extends HTMLElement {});
+}
+
+function renderComponent(source: Element, scope: MiniData, renderPath: string): HTMLElement {
   const tagName = source.tagName.toLowerCase();
   const componentPath = assets?.components[tagName];
   const id = `${pageId}:component:${renderPath}`;
-  const wrapper = document.createElement("div");
-  wrapper.classList.add("mini-component", `mini-component-${tagName}`);
-  wrapper.dataset.componentId = id;
-  if (!componentPath) return wrapper;
+  ensureCustomElement(tagName);
+  const host = document.createElement(isValidCustomElementName(tagName) ? tagName : "div") as HTMLElement;
+  host.classList.add("mini-component", `mini-component-${tagName}`);
+  host.dataset.componentId = id;
+
+  for (const attr of Array.from(source.attributes)) {
+    const name = attr.name;
+    if (name.startsWith("wx:") || name.startsWith("bind") || name.startsWith("catch")) continue;
+    const value = interpolate(attr.value, scope);
+    if (name === "class") host.className = `${host.className} ${value}`.trim();
+    else if (name === "style") host.setAttribute("style", value);
+    else if (name.startsWith("data-")) host.setAttribute(name, value);
+    else host.setAttribute(name, value);
+  }
+
+  if (!componentPath) return host;
 
   const snapshot = componentState[id];
   const component = componentAssets[componentPath];
-  if (!snapshot || !component) return wrapper;
+  if (!snapshot || !component) return host;
 
   const template = document.createElement("template");
   template.innerHTML = component.wxml;
   const componentScope = { ...snapshot.properties, ...snapshot.data };
-  wrapper.append(...renderChildren(template.content, componentScope, `component:${id}`, id));
-  return wrapper;
+  const shadow = host.attachShadow({ mode: "open" });
+  const style = document.createElement("style");
+  style.textContent = `:host{display:block;box-sizing:border-box}${component.wxss}`;
+  shadow.append(style, ...renderChildren(template.content, componentScope, `component:${id}`, id));
+  return host;
 }
 
 function bindEvent(source: Element, element: HTMLElement, attr: string, miniType: string, domType: keyof HTMLElementEventMap, componentId?: string): void {
@@ -193,8 +217,7 @@ function applyPageCss(css: string): void {
     style.id = "mini-page-style";
     document.head.append(style);
   }
-  const componentCss = assets ? Object.values(assets.components).map((path) => componentAssets[path]?.wxss ?? "").join("\n") : "";
-  style.textContent = `${css}\n${componentCss}`;
+  style.textContent = css;
 }
 
 function render(): void {

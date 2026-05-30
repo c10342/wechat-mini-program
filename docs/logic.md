@@ -1,6 +1,6 @@
 # 逻辑层支持清单
 
-本文档记录当前小程序容器在逻辑层已经支持的 `App`、`Page` 生命周期、属性和实例方法。内容以 `src/worker/index.ts` 的实际实现为准。
+本文档记录当前小程序容器在逻辑层已经支持的 `App`、`Page`、`Component` 生命周期、属性和实例方法。内容以 `src/worker/index.ts` 的实际实现为准。
 
 ## 运行模型
 
@@ -10,12 +10,14 @@
 
 1. Worker 收到主进程发送的 bundle。
 2. 执行 `app.js`，通过 `App()` 注册应用定义。
-3. 依次执行所有页面 `.js`，通过 `Page()` 注册页面定义。
-4. 调用 `App.onLaunch()`。
-5. 调用 `App.onShow()`。
-6. 页面创建时调用对应页面的 `onLoad(query)`。
-7. 页面 WebContents ready 后调用页面 `onShow()` 和首次 `onReady()`。
-8. 页面隐藏、返回或销毁时触发对应页面生命周期。
+3. 依次执行所有自定义组件 `.js`，通过 `Component()` 注册组件定义。
+4. 依次执行所有页面 `.js`，通过 `Page()` 注册页面定义。
+5. 调用 `App.onLaunch()`。
+6. 调用 `App.onShow()`。
+7. 页面创建时调用对应页面的 `onLoad(query)`。
+8. 页面数据同步时，Worker 根据页面 WXML 和 `usingComponents` 创建或更新组件实例。
+9. 页面 WebContents ready 后调用页面 `onShow()`、组件首次 `ready()` 和页面首次 `onReady()`。
+10. 页面隐藏、返回或销毁时触发对应页面生命周期；页面销毁时触发所属组件 `detached()`。
 
 ## 脚本执行环境
 
@@ -25,6 +27,7 @@
 | --- | --- | --- |
 | `App` | 支持 | 注册应用定义。 |
 | `Page` | 支持 | 注册页面定义。 |
+| `Component` | 支持实用子集 | 注册自定义组件定义。 |
 | `wx` | 支持部分 API | 路由、UI、存储、网络、系统信息等宿主 API。 |
 | `console` | 支持 | 输出日志。 |
 | `setTimeout` | 支持 | 定时器。 |
@@ -162,6 +165,137 @@ Page({
 
 不建议业务代码依赖内部字段。
 
+## Component 支持
+
+### 组件资源与渲染模型
+
+页面通过 `json` 的 `usingComponents` 引用本地组件：
+
+```json
+{
+  "usingComponents": {
+    "task-card": "/components/task-card/index"
+  }
+}
+```
+
+当前组件资源约定：
+
+- 组件脚本必须是 `.js`，不支持 `.ts` fallback。
+- 组件必须提供 `.json`、`.wxml`、`.js`，`.wxss` 可选。
+- 组件路径支持 `/` 开头的小程序根路径，或相对当前页面目录的路径。
+- 暂不支持 npm 组件。
+
+视图层使用 Web Component 形式承载自定义组件：
+
+- 页面 WXML 中的自定义组件标签会保留为真实自定义元素，例如 `<task-card></task-card>`。
+- 组件 WXML 会渲染到该自定义元素的 Shadow DOM。
+- 组件 WXSS 注入组件 Shadow DOM，不混入页面全局样式。
+- 业务 JS 仍只在 Worker 中执行，页面 WebContents 不执行组件业务脚本。
+
+### Component 定义对象
+
+`Component()` 接收一个普通对象。
+
+```js
+Component({
+  properties: {
+    id: String,
+    title: String,
+    count: { type: Number, value: 0 }
+  },
+
+  data: {
+    tapCount: 0
+  },
+
+  attached() {
+    console.log("component attached");
+  },
+
+  methods: {
+    handleTap() {
+      this.setData({ tapCount: this.data.tapCount + 1 });
+      this.triggerEvent("select", { id: this.properties.id });
+    }
+  }
+});
+```
+
+当前支持的 Component 字段：
+
+| 字段 | 支持情况 | 说明 |
+| --- | --- | --- |
+| `properties` | 支持实用子集 | 支持 `String`、`Number`、`Boolean`、`Array`、`Object` 和 `{ type, value }` 默认值。 |
+| `data` | 支持 | 组件内部初始数据，会被深拷贝到组件实例上。 |
+| `methods` | 支持 | 可作为组件内部事件处理函数或普通实例方法。 |
+| 生命周期函数 | 支持实用子集 | 当前支持 `created`、`attached`、`ready`、`detached`。 |
+| 自定义属性 | 支持保存 | 会浅拷贝到组件实例上。 |
+
+### Component 生命周期
+
+| 生命周期函数 | 支持情况 | 触发时机 | 参数 |
+| --- | --- | --- | --- |
+| `created` | 支持 | 组件实例创建后触发。 | 无 |
+| `attached` | 支持 | 组件实例创建并绑定到页面后触发。 | 无 |
+| `ready` | 支持 | 所属页面首次 ready 时触发一次。 | 无 |
+| `detached` | 支持 | 组件从页面渲染树移除或所属页面卸载时触发。 | 无 |
+
+说明：
+
+- Worker 根据页面 WXML、`wx:if`、`wx:for` 和当前页面数据计算组件实例。
+- 页面 `setData()` 后会重新计算组件传入属性，组件自身 `data` 会保留。
+- 条件渲染导致组件消失时会触发 `detached()` 并销毁该组件实例。
+
+### Component 实例属性
+
+组件生命周期和 `methods` 中的 `this` 指向组件实例。
+
+当前可用实例属性：
+
+| 属性 | 支持情况 | 说明 |
+| --- | --- | --- |
+| `this.properties` | 支持 | 当前组件外部传入属性。 |
+| `this.data` | 支持 | 当前组件内部完整数据。 |
+| `this.setData` | 支持 | 更新组件内部数据并通知视图层。 |
+| `this.triggerEvent` | 支持 | 触发自定义事件并调用页面上对应绑定方法。 |
+
+`triggerEvent(name, detail)` 示例：
+
+```xml
+<task-card bindselect="openTask"></task-card>
+```
+
+```js
+Component({
+  methods: {
+    handleTap() {
+      this.triggerEvent("select", { id: this.properties.id });
+    }
+  }
+});
+```
+
+```js
+Page({
+  openTask(event) {
+    console.log(event.detail.id);
+  }
+});
+```
+
+内部字段：
+
+| 字段 | 说明 |
+| --- | --- |
+| `__id` | 组件实例唯一 ID，内部使用。 |
+| `__pageId` | 所属页面实例 ID，内部使用。 |
+| `__path` | 组件资源路径，内部使用。 |
+| `__ready` | 标记 `ready` 是否已执行，内部使用。 |
+| `__eventHandlers` | 自定义事件到页面 handler 的映射，内部使用。 |
+
+不建议业务代码依赖内部字段。
+
 ## setData 支持
 
 ### 基本写法
@@ -192,7 +326,7 @@ this.setData({
 
 ### 回调
 
-支持 `setData(patch, callback)`：
+页面和组件实例都支持 `setData(patch, callback)`：
 
 ```js
 this.setData({ count: 2 }, function () {
@@ -204,10 +338,12 @@ this.setData({ count: 2 }, function () {
 
 - 当前 callback 在 Worker 内发送视图更新消息后立即执行。
 - 当前视图层每次收到数据后会整体重渲染，不做节点级 diff。
+- 页面 `setData()` 会更新页面数据并重新计算组件属性。
+- 组件 `setData()` 只更新组件内部 `data`，不会直接修改页面数据。
 
 ## 页面事件处理函数
 
-WXML 事件会调用 Page 实例上的同名方法。
+WXML 事件会调用 Page 实例或 Component 实例上的同名方法。
 
 ```xml
 <view data-id="{{item.id}}" bindtap="openTask">
@@ -232,6 +368,8 @@ Page({
 | `event.currentTarget.dataset` | 当前元素上的 `data-*` 数据。 |
 | `event.target.dataset` | 当前实现中与 `currentTarget.dataset` 相同。 |
 | `event.detail` | 事件附加数据；`bindinput` 包含 `{ value }`。 |
+
+组件内部 WXML 事件会先调用组件 `methods` 中的同名方法。组件通过 `this.triggerEvent(name, detail)` 触发的自定义事件，会调用页面组件标签上绑定的 handler，例如 `bindselect="openTask"`。
 
 ## query 参数
 
@@ -301,9 +439,12 @@ Page({
 - Page `onReachBottom`
 - Page `onShareAppMessage`
 - Page `onPageScroll`
-- Component 构造器
 - Behavior
 - observers
 - computed/watch
+- slots
+- selectComponent
+- relations
+- externalClasses
 - 官方同步 storage API 的真实同步返回
 - 小程序插件、分包、WXS、云开发
