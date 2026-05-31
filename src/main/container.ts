@@ -56,7 +56,9 @@ export class MiniProgramContainer {
   // 标题栏/窗口控制栏
   private hostView: WebContentsView | null = null;
   private hostOverlayHeight = 0;
+  // 一个独立的 JavaScirpt 运行线程
   private runtimeWorker: Worker | null = null;
+  // 小程序运行时的相关信息
   private bundle: MiniAppBundle | null = null;
   private pageSeq = 0;
   // 对应小程序页面栈；被覆盖的页面会保活，直到路由把它移除。
