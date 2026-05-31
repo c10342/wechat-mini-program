@@ -43,13 +43,17 @@ export interface MiniProgramContainerOptions {
 }
 
 export class MiniProgramContainer {
+  // 小程序窗口
   readonly window: BrowserWindow;
-
+  // 小程序代码存放的路径
   private readonly appRoot: string;
+  // 固定在宿主顶部栏高度，也就是标题栏/窗口控制栏占用的顶部；小程序页面内容会从这个高度以下开始
   private readonly hostHeight: number;
   private readonly preloadPath: string;
+  // js运行在worker中
   private readonly workerPath: string;
   private appId: string | null = null;
+  // 标题栏/窗口控制栏
   private hostView: WebContentsView | null = null;
   private hostOverlayHeight = 0;
   private runtimeWorker: Worker | null = null;
